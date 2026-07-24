@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Turley Household">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
+<link rel="icon" href="data:image/png;base64,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">
+<title>Turley Household</title>
+<style>
+  :root {
+    --bg: #0f1720;
+    --card: #182430;
+    --accent: #4f8ef7;
+    --accent2: #34d399;
+    --danger: #f87171;
+    --text: #e6edf3;
+    --muted: #9fb1c1;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; height: 100%; overscroll-behavior: none; }
+  #app { display: none; flex-direction: column; height: 100vh; }
+  #app.ready { display: flex; }
+  header { padding: 20px 20px 12px; }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  main { flex: 1; overflow-y: auto; padding: 0 16px 90px; -webkit-overflow-scrolling: touch; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .card { background: var(--card); border-radius: 16px; padding: 16px; }
+  .kpi-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .kpi-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  .kpi-value.negative { color: var(--danger); }
+  .kpi-value.positive { color: var(--accent2); }
+  .section-title { font-size: 15px; font-weight: 600; margin: 20px 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .goal-card { margin-bottom: 12px; }
+  .goal-card .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; gap: 8px; }
+  .goal-card .name { font-weight: 600; font-size: 16px; }
+  .goal-card .amounts { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .bar-track { background: rgba(255,255,255,0.08); border-radius: 8px; height: 10px; overflow: hidden; }
+  .bar-fill { background: var(--accent); height: 100%; border-radius: 8px; transition: width 0.4s ease; }
+  .goal-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .pooled-card p { display: flex; justify-content: space-between; margin: 6px 0; font-size: 14px; }
+  .pooled-card .label { color: var(--muted); }
+  .reconcile { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.06); font-size: 13px; }
+  form { display: flex; flex-direction: column; gap: 14px; padding-top: 8px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .field input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: var(--card); color: var(--text); font-size: 16px; }
+  .segmented { display: flex; background: var(--card); border-radius: 10px; padding: 4px; }
+  .segmented button { flex: 1; padding: 10px; border: none; background: transparent; color: var(--muted); border-radius: 8px; font-size: 14px; font-weight: 600; }
+  .segmented button.active { background: var(--accent); color: white; }
+  .submit-btn { padding: 14px; border-radius: 12px; border: none; background: var(--accent2); color: #04231a; font-weight: 700; font-size: 16px; margin-top: 4px; }
+  .submit-btn:disabled { opacity: 0.5; }
+  .toast { position: fixed; bottom: 90px; left: 16px; right: 16px; background: var(--card); border-radius: 12px; padding: 14px; text-align: center; font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: none; z-index: 10; }
+  .toast.show { display: block; }
+  .toast.error { color: var(--danger); }
+  .toast.ok { color: var(--accent2); }
+  .month-select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: var(--card); color: var(--text); font-size: 16px; margin-bottom: 16px; }
+  .summary-sub { font-size: 13px; font-weight: 600; color: var(--muted); margin: 4px 0 8px; }
+  .cat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 14px; }
+  .cat-row:last-child { border-bottom: none; }
+  .cat-row .amt { font-weight: 600; }
+  .txn-filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .txn-filters .row { display: flex; gap: 10px; }
+  .txn-filters .row .field { flex: 1; margin: 0; }
+  .txn-filters select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: var(--card); color: var(--text); font-size: 15px; }
+  .txn-clear { background: none; border: 1px solid rgba(255,255,255,0.12); color: var(--muted); border-radius: 10px; padding: 10px; font-size: 13px; font-weight: 600; }
+  .txn-count { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+  .txn-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.06); gap: 10px; }
+  .txn-row:last-child { border-bottom: none; }
+  .txn-main { min-width: 0; }
+  .txn-merchant { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .txn-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .txn-amount { font-weight: 700; font-size: 14px; white-space: nowrap; }
+  nav { display: flex; border-top: 1px solid rgba(255,255,255,0.08); background: var(--card); padding: 8px 0; position: fixed; bottom: 0; left: 0; right: 0; }
+  nav button { flex: 1; background: none; border: none; color: var(--muted); font-size: 11px; padding: 6px 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  nav button .icon { font-size: 20px; }
+  nav button.active { color: var(--accent); }
+  .loading { text-align: center; color: var(--muted); padding: 40px 0; }
+
+  #gate { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 24px; text-align: center; }
+  #gate.hidden { display: none; }
+  #gate h1 { font-size: 20px; margin-bottom: 8px; }
+  #gate p { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  #gate input { width: 100%; max-width: 280px; padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: var(--card); color: var(--text); font-size: 16px; text-align: center; margin-bottom: 14px; }
+  #gate button { width: 100%; max-width: 280px; padding: 14px; border-radius: 12px; border: none; background: var(--accent); color: white; font-weight: 700; font-size: 16px; }
+  #gate .gate-error { color: var(--danger); font-size: 13px; margin-top: 12px; min-height: 16px; }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <h1>Turley Household</h1>
+  <p>Enter the app passphrase to continue.</p>
+  <input type="password" id="gate-input" placeholder="Passphrase" autocomplete="off">
+  <button type="button" id="gate-submit">Unlock</button>
+  <div class="gate-error" id="gate-error"></div>
+</div>
+
+<div id="app">
+  <header>
+    <h1>Turley Household</h1>
+    <p id="lastUpdated">Loading…</p>
+  </header>
+  <main>
+    <section id="page-dashboard" class="page active">
+      <div class="kpi-grid" id="kpiGrid"><div class="loading">Loading dashboard…</div></div>
+      <div class="section-title">Pooled Savings</div>
+      <div class="card pooled-card" id="pooledCard"></div>
+    </section>
+
+    <section id="page-summary" class="page">
+      <div class="section-title">Monthly Summary</div>
+      <select class="month-select" id="summaryMonth"></select>
+      <div class="kpi-grid" id="summaryKpiGrid"></div>
+      <div class="section-title">Debt Paydown &amp; Savings</div>
+      <div class="card" id="summaryDebtCard"></div>
+      <div class="section-title">Checking — Spending by Category</div>
+      <div class="card" id="summaryCheckingCats"></div>
+      <div class="section-title">Credit Card — Spending by Category</div>
+      <div class="card" id="summaryCreditCats"></div>
+    </section>
+
+    <section id="page-goals" class="page">
+      <div class="section-title">Goals</div>
+      <div id="goalsList"><div class="loading">Loading goals…</div></div>
+    </section>
+
+    <section id="page-transactions" class="page">
+      <div class="section-title">Transactions</div>
+      <div class="txn-filters">
+        <div class="row">
+          <div class="field">
+            <label for="tf-from">From</label>
+            <input type="date" id="tf-from">
+          </div>
+          <div class="field">
+            <label for="tf-to">To</label>
+            <input type="date" id="tf-to">
+          </div>
+        </div>
+        <div class="field">
+          <label for="tf-category">Category</label>
+          <select id="tf-category"><option value="">All Categories</option></select>
+        </div>
+        <button type="button" class="txn-clear" id="tf-clear">Clear Filters</button>
+      </div>
+      <div class="txn-count" id="txnCount"></div>
+      <div class="card" id="txnList"><div class="loading">Loading transactions…</div></div>
+    </section>
+
+    <section id="page-add" class="page">
+      <div class="section-title">Add a Transaction</div>
+      <form id="quickAddForm">
+        <div class="segmented" id="accountToggle">
+          <button type="button" data-value="checking" class="active">Checking</button>
+          <button type="button" data-value="credit">Credit Card</button>
+        </div>
+
+        <div class="field">
+          <label for="f-date">Date</label>
+          <input type="date" id="f-date" required>
+        </div>
+
+        <div class="field">
+          <label for="f-merchant">Merchant / Description</label>
+          <input type="text" id="f-merchant" placeholder="e.g. Trader Joe's" required>
+        </div>
+
+        <div class="field">
+          <label for="f-category">Category</label>
+          <input type="text" id="f-category" list="category-list" placeholder="Start typing…" required>
+          <datalist id="category-list"></datalist>
+        </div>
+
+        <div class="field">
+          <label for="f-amount">Amount ($)</label>
+          <input type="number" id="f-amount" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" required>
+        </div>
+
+        <div class="field" id="checkingFlowField">
+          <label>Flow</label>
+          <div class="segmented" id="flowToggle">
+            <button type="button" data-value="Outflow" class="active">Outflow</button>
+            <button type="button" data-value="Income">Income</button>
+          </div>
+        </div>
+
+        <div class="field" id="ccFields" style="display:none;">
+          <label>Cardholder</label>
+          <div class="segmented" id="cardholderToggle">
+            <button type="button" data-value="Trevon" class="active">Trevon</button>
+            <button type="button" data-value="Ainsley">Ainsley</button>
+            <button type="button" data-value="Fee">Fee</button>
+          </div>
+          <label style="margin-top:12px;">Type</label>
+          <div class="segmented" id="typeToggle">
+            <button type="button" data-value="Spend" class="active">Spend</button>
+            <button type="button" data-value="Payment">Payment</button>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">Add Transaction</button>
+      </form>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <nav>
+    <button class="nav-btn active" data-page="dashboard"><span class="icon">🏠</span>Dashboard</button>
+    <button class="nav-btn" data-page="summary"><span class="icon">📊</span>Summary</button>
+    <button class="nav-btn" data-page="goals"><span class="icon">🎯</span>Goals</button>
+    <button class="nav-btn" data-page="transactions"><span class="icon">📋</span>History</button>
+    <button class="nav-btn" data-page="add"><span class="icon">➕</span>Add</button>
+  </nav>
+</div>
+
+<script>
+  var API_URL = 'https://script.google.com/macros/s/AKfycbyLQlKJ44WRm8Zc0ctkj1K3lqpghG0s0wKRkeEbKEaYI--igmSFpfxjw3-GcA42vG4X1Q/exec';
+  var PASS_KEY = 'turley_pass';
+
+  function $(sel) { return document.querySelector(sel); }
+  function $all(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+
+  function fmtMoney(n) {
+    if (n === '' || n === null || n === undefined) return '--';
+    var num = Number(n);
+    var sign = num < 0 ? '-' : '';
+    return sign + '$' + Math.abs(num).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+  }
+
+  function apiGet(action, params) {
+    var pass = localStorage.getItem(PASS_KEY);
+    var qs = 'action=' + encodeURIComponent(action) + '&pass=' + encodeURIComponent(pass);
+    for (var key in params) {
+      if (params[key] !== undefined && params[key] !== null) {
+        qs += '&' + key + '=' + encodeURIComponent(params[key]);
+      }
+    }
+    return fetch(API_URL + '?' + qs).then(function(r) { return r.json(); });
+  }
+
+  function apiPost(entry) {
+    var pass = localStorage.getItem(PASS_KEY);
+    return fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ pass: pass, entry: entry })
+    }).then(function(r) { return r.json(); });
+  }
+
+  // --- Passphrase gate ---
+  function showGate(errorMsg) {
+    $('#gate').classList.remove('hidden');
+    $('#app').classList.remove('ready');
+    $('#gate-error').textContent = errorMsg || '';
+  }
+
+  function tryUnlock(pass) {
+    localStorage.setItem(PASS_KEY, pass);
+    apiGet('dashboard').then(function(data) {
+      if (data.error) {
+        localStorage.removeItem(PASS_KEY);
+        showGate('Incorrect passphrase. Try again.');
+        return;
+      }
+      $('#gate').classList.add('hidden');
+      $('#app').classList.add('ready');
+      initApp();
+    }).catch(function() {
+      localStorage.removeItem(PASS_KEY);
+      showGate('Could not reach the server. Try again.');
+    });
+  }
+
+  $('#gate-submit').addEventListener('click', function() {
+    var pass = $('#gate-input').value.trim();
+    if (!pass) return;
+    tryUnlock(pass);
+  });
+  $('#gate-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') $('#gate-submit').click();
+  });
+
+  // --- App ---
+  function initApp() {
+    $all('.nav-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        $all('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
+        $all('.page').forEach(function(p) { p.classList.remove('active'); });
+        btn.classList.add('active');
+        $('#page-' + btn.dataset.page).classList.add('active');
+      });
+    });
+
+    function wireSegmented(id) {
+      $all('#' + id + ' button').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          $all('#' + id + ' button').forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+        });
+      });
+    }
+    ['accountToggle', 'flowToggle', 'cardholderToggle', 'typeToggle'].forEach(wireSegmented);
+
+    $('#accountToggle').addEventListener('click', function(e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      var val = btn.dataset.value;
+      $('#checkingFlowField').style.display = val === 'checking' ? 'block' : 'none';
+      $('#ccFields').style.display = val === 'credit' ? 'block' : 'none';
+    });
+
+    function activeValue(id) {
+      var btn = document.querySelector('#' + id + ' button.active');
+      return btn ? btn.dataset.value : null;
+    }
+
+    function showToast(message, isError) {
+      var toast = $('#toast');
+      toast.textContent = message;
+      toast.className = 'toast show ' + (isError ? 'error' : 'ok');
+      setTimeout(function() { toast.classList.remove('show'); }, 3200);
+    }
+
+    function kpiCard(label, value, cls) {
+      return '<div class="card"><div class="kpi-label">' + label + '</div>' +
+        '<div class="kpi-value ' + cls + '">' + value + '</div></div>';
+    }
+
+    function loadData() {
+      apiGet('dashboard').then(function(data) {
+        if (data.error) { showToast('Could not load data: ' + data.error, true); return; }
+        renderData(data);
+      }).catch(function(err) {
+        showToast('Could not load data: ' + err, true);
+      });
+    }
+
+    function renderData(data) {
+      $('#lastUpdated').textContent = data.kpis.lastUpdated || '';
+
+      var netClass = Number(data.kpis.netCashFlow) < 0 ? 'negative' : 'positive';
+      var checkClass = Number(data.kpis.checkingChange) < 0 ? 'negative' : 'positive';
+      $('#kpiGrid').innerHTML =
+        kpiCard('Avg Monthly Income', fmtMoney(data.kpis.avgIncome), 'positive') +
+        kpiCard('Avg Monthly Spend', fmtMoney(data.kpis.avgSpend), '') +
+        kpiCard('Net Cash Flow', fmtMoney(data.kpis.netCashFlow), netClass) +
+        kpiCard('Card Utilization', data.kpis.cardUtilization, '') +
+        kpiCard('6-Mo Checking Change', fmtMoney(data.kpis.checkingChange), checkClass) +
+        kpiCard('Top Spend Category', data.kpis.topCategory, '');
+
+      $('#pooledCard').innerHTML =
+        '<p><span class="label">Seed Balance</span><span>' + fmtMoney(data.pooled.seedBalance) + '</span></p>' +
+        '<p><span class="label">Internal Transfers</span><span>' + fmtMoney(data.pooled.runningTransfers) + '</span></p>' +
+        '<p><span class="label">Total Pooled Balance</span><span><strong>' + fmtMoney(data.pooled.totalBalance) + '</strong></span></p>' +
+        '<p><span class="label">Total Allocated</span><span>' + fmtMoney(data.pooled.totalAllocated) + '</span></p>' +
+        '<div class="reconcile">' + data.pooled.reconciliation + '</div>';
+
+      $('#goalsList').innerHTML = data.goals.map(function(g) {
+        var hasTarget = g.target !== '' && g.target !== null;
+        var pct = hasTarget ? Math.max(0, Math.min(100, (g.allocated / g.target) * 100)) : 0;
+        return '<div class="card goal-card">' +
+          '<div class="row"><span class="name">' + g.name + '</span>' +
+          '<span class="amounts">' + fmtMoney(g.allocated) + ' / ' + (hasTarget ? fmtMoney(g.target) : 'no target') + '</span></div>' +
+          '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>' +
+          (g.targetDate ? '<div class="goal-note">Target date: ' + g.targetDate + '</div>' : '') +
+          (g.notes ? '<div class="goal-note">' + g.notes + '</div>' : '') +
+          '</div>';
+      }).join('');
+    }
+
+    apiGet('categories').then(function(categories) {
+      if (categories.error) return;
+      $('#category-list').innerHTML = categories.map(function(c) { return '<option value="' + c + '">'; }).join('');
+      $('#tf-category').innerHTML = '<option value="">All Categories</option>' +
+        categories.map(function(c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
+    });
+
+    var allTransactions = [];
+
+    function txnRow(t) {
+      var cls = Number(t.amount) < 0 ? 'negative' : 'positive';
+      var badge = t.account === 'credit' ? ('Credit Card' + (t.cardholder ? ' · ' + t.cardholder : '')) : 'Checking';
+      return '<div class="txn-row">' +
+        '<div class="txn-main">' +
+          '<div class="txn-merchant">' + t.merchant + '</div>' +
+          '<div class="txn-meta">' + t.date + ' · ' + badge + ' · ' + t.category + '</div>' +
+        '</div>' +
+        '<div class="txn-amount ' + cls + '">' + fmtMoney(t.amount) + '</div>' +
+      '</div>';
+    }
+
+    function renderTransactionList(list) {
+      $('#txnCount').textContent = list.length + (list.length === 1 ? ' transaction' : ' transactions');
+      $('#txnList').innerHTML = list.length
+        ? list.map(txnRow).join('')
+        : '<div class="loading">No transactions match these filters.</div>';
+    }
+
+    function applyTxnFilters() {
+      var from = $('#tf-from').value;
+      var to = $('#tf-to').value;
+      var category = $('#tf-category').value;
+      var filtered = allTransactions.filter(function(t) {
+        if (from && t.date < from) return false;
+        if (to && t.date > to) return false;
+        if (category && t.category !== category) return false;
+        return true;
+      });
+      renderTransactionList(filtered);
+    }
+
+    function loadTransactions() {
+      apiGet('transactions').then(function(data) {
+        if (data.error) { $('#txnList').innerHTML = '<div class="loading">' + data.error + '</div>'; return; }
+        allTransactions = data;
+        applyTxnFilters();
+        initSummary();
+      }).catch(function(err) {
+        $('#txnList').innerHTML = '<div class="loading">Could not load transactions: ' + err + '</div>';
+      });
+    }
+
+    // --- Monthly Summary (checking + credit combined) ---
+    var MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    var CHECKING_EXCLUDE = { 'Income': true, 'Internal Savings Transfer': true, 'Credit Card Payments': true, 'Auto Loan Payment': true };
+    var CREDIT_EXCLUDE = { 'Card Payment': true };
+
+    function monthLabel(key) {
+      var parts = key.split('-');
+      return MONTH_NAMES[Number(parts[1]) - 1] + ' ' + parts[0];
+    }
+
+    function computeMonthSummary(monthKey) {
+      var checkingCatTotals = {};
+      var creditCatTotals = {};
+      var income = 0, ccPayments = 0, autoLoan = 0, savingsTransfer = 0;
+
+      allTransactions.forEach(function(t) {
+        if (t.date.slice(0, 7) !== monthKey) return;
+        if (t.account === 'checking') {
+          if (t.category === 'Income') { income += t.amount; return; }
+          if (t.category === 'Credit Card Payments') { ccPayments += -t.amount; return; }
+          if (t.category === 'Auto Loan Payment') { autoLoan += -t.amount; return; }
+          if (t.category === 'Internal Savings Transfer') { savingsTransfer += -t.amount; return; }
+          checkingCatTotals[t.category] = (checkingCatTotals[t.category] || 0) + (-t.amount);
+        } else {
+          if (CREDIT_EXCLUDE[t.category]) return;
+          creditCatTotals[t.category] = (creditCatTotals[t.category] || 0) + t.amount;
+        }
+      });
+
+      function toSortedList(totals) {
+        return Object.keys(totals).map(function(cat) { return { category: cat, amount: totals[cat] }; })
+          .sort(function(a, b) { return b.amount - a.amount; });
+      }
+
+      var checkingCategories = toSortedList(checkingCatTotals);
+      var creditCategories = toSortedList(creditCatTotals);
+      var checkingSpend = checkingCategories.reduce(function(s, c) { return s + c.amount; }, 0);
+      var creditSpend = creditCategories.reduce(function(s, c) { return s + c.amount; }, 0);
+      var debtPaydown = ccPayments + autoLoan;
+      var netCashFlow = income - checkingSpend - debtPaydown - savingsTransfer;
+
+      return {
+        income: income, checkingSpend: checkingSpend, creditSpend: creditSpend,
+        totalSpend: checkingSpend + creditSpend, ccPayments: ccPayments, autoLoan: autoLoan,
+        debtPaydown: debtPaydown, savingsTransfer: savingsTransfer, netCashFlow: netCashFlow,
+        checkingCategories: checkingCategories, creditCategories: creditCategories
+      };
+    }
+
+    function catRows(list) {
+      if (!list.length) return '<div class="loading">No spending in this category group.</div>';
+      return list.map(function(c) {
+        var cls = c.amount < 0 ? 'negative' : '';
+        return '<div class="cat-row"><span>' + c.category + '</span><span class="amt ' + cls + '">' + fmtMoney(c.amount) + '</span></div>';
+      }).join('');
+    }
+
+    function renderSummary(monthKey) {
+      var s = computeMonthSummary(monthKey);
+      var netClass = s.netCashFlow < 0 ? 'negative' : 'positive';
+
+      $('#summaryKpiGrid').innerHTML =
+        kpiCard('Income', fmtMoney(s.income), 'positive') +
+        kpiCard('Checking Spend', fmtMoney(s.checkingSpend), '') +
+        kpiCard('Credit Card Spend', fmtMoney(s.creditSpend), '') +
+        kpiCard('Total Household Spend', fmtMoney(s.totalSpend), '') +
+        kpiCard('Net Cash Flow', fmtMoney(s.netCashFlow), netClass) +
+        kpiCard('Debt Paydown', fmtMoney(s.debtPaydown), '');
+
+      $('#summaryDebtCard').innerHTML =
+        '<div class="cat-row"><span>Credit Card Payments</span><span class="amt">' + fmtMoney(s.ccPayments) + '</span></div>' +
+        '<div class="cat-row"><span>Auto Loan Payment</span><span class="amt">' + fmtMoney(s.autoLoan) + '</span></div>' +
+        '<div class="cat-row"><span>Internal Savings Transfer</span><span class="amt">' + fmtMoney(s.savingsTransfer) + '</span></div>';
+
+      $('#summaryCheckingCats').innerHTML = catRows(s.checkingCategories);
+      $('#summaryCreditCats').innerHTML = catRows(s.creditCategories);
+    }
+
+    function initSummary() {
+      var months = {};
+      allTransactions.forEach(function(t) { months[t.date.slice(0, 7)] = true; });
+      var monthKeys = Object.keys(months).sort().reverse();
+      if (!monthKeys.length) return;
+      $('#summaryMonth').innerHTML = monthKeys.map(function(k) {
+        return '<option value="' + k + '">' + monthLabel(k) + '</option>';
+      }).join('');
+      $('#summaryMonth').addEventListener('change', function() {
+        renderSummary($('#summaryMonth').value);
+      });
+      renderSummary(monthKeys[0]);
+    }
+
+    ['tf-from', 'tf-to', 'tf-category'].forEach(function(id) {
+      $('#' + id).addEventListener('change', applyTxnFilters);
+    });
+    $('#tf-clear').addEventListener('click', function() {
+      $('#tf-from').value = '';
+      $('#tf-to').value = '';
+      $('#tf-category').value = '';
+      applyTxnFilters();
+    });
+
+    loadTransactions();
+
+    $('#f-date').value = new Date().toISOString().slice(0, 10);
+
+    $('#f-merchant').addEventListener('blur', function() {
+      var merchant = $('#f-merchant').value.trim();
+      if (!merchant || $('#f-category').value.trim()) return;
+      apiGet('suggestCategory', { merchant: merchant }).then(function(data) {
+        if (data.category) $('#f-category').value = data.category;
+      });
+    });
+
+    $('#quickAddForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      var entry = {
+        account: activeValue('accountToggle'),
+        date: $('#f-date').value,
+        merchant: $('#f-merchant').value.trim(),
+        category: $('#f-category').value.trim(),
+        amount: $('#f-amount').value,
+        flow: activeValue('flowToggle'),
+        cardholder: activeValue('cardholderToggle'),
+        type: activeValue('typeToggle')
+      };
+      $('#submitBtn').disabled = true;
+      $('#submitBtn').textContent = 'Adding…';
+      apiPost(entry).then(function(result) {
+        $('#submitBtn').disabled = false;
+        $('#submitBtn').textContent = 'Add Transaction';
+        if (result.success) {
+          showToast('Transaction added', false);
+          $('#quickAddForm').reset();
+          $('#f-date').value = new Date().toISOString().slice(0, 10);
+          loadData();
+        } else {
+          showToast(result.error, true);
+        }
+      }).catch(function(err) {
+        $('#submitBtn').disabled = false;
+        $('#submitBtn').textContent = 'Add Transaction';
+        showToast('Error: ' + err, true);
+      });
+    });
+
+    loadData();
+  }
+
+  // --- Boot ---
+  var storedPass = localStorage.getItem(PASS_KEY);
+  if (storedPass) {
+    tryUnlock(storedPass);
+  } else {
+    showGate();
+  }
+</script>
+</body>
+</html>
