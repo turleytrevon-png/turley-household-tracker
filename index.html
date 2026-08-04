@@ -132,7 +132,7 @@
       <div class="section-title">Monthly Summary</div>
       <select class="month-select" id="summaryMonth"></select>
       <div class="kpi-grid" id="summaryKpiGrid"></div>
-      <div class="section-title">Debt Paydown &amp; Savings</div>
+      <div class="section-title">Transfers &amp; Debt</div>
       <div class="card" id="summaryDebtCard"></div>
       <div class="section-title">Checking — Spending by Category</div>
       <div class="card" id="summaryCheckingCats"></div>
@@ -610,8 +610,13 @@
       var creditCategories = toSortedList(creditCatTotals);
       var checkingSpend = checkingCategories.reduce(function(s, c) { return s + c.amount; }, 0);
       var creditSpend = creditCategories.reduce(function(s, c) { return s + c.amount; }, 0);
-      var debtPaydown = ccPayments + autoLoan;
-      var netCashFlow = income - checkingSpend - debtPaydown - savingsTransfer;
+
+      // Paying the credit card is a transfer between our own accounts, NOT debt
+      // paydown — that spending was already counted the day it happened. Debt
+      // paydown is the auto loan only. Net cash flow therefore counts credit
+      // spending when it HAPPENS rather than when the card gets paid.
+      var debtPaydown = autoLoan;
+      var netCashFlow = income - checkingSpend - creditSpend - autoLoan - savingsTransfer;
 
       return {
         income: income, checkingSpend: checkingSpend, creditSpend: creditSpend,
@@ -683,7 +688,7 @@
           ]),
           [{ name: 'Income', color: COLORS.income }, { name: 'Spending', color: COLORS.spend }]) +
 
-        chartCard('Net Cash Flow', 'Income minus spending, debt paydown and savings transfers.',
+        chartCard('Net Cash Flow', 'Income minus all spending, the auto loan and savings transfers.',
           buildBarChart(labels, [
             { name: 'Net', color: function(v) { return v < 0 ? COLORS.spend : COLORS.income; }, values: net }
           ], { height: 160 })) +
@@ -695,12 +700,13 @@
           ], { stacked: true }),
           [{ name: 'Checking', color: COLORS.checking }, { name: 'Credit Card', color: COLORS.credit }]) +
 
-        chartCard('Debt Paydown &amp; Savings', 'Money sent to debt and to the savings pool.',
+        chartCard('Debt Paydown &amp; Savings',
+          'Auto loan only — paying the credit card is a transfer, not debt paydown.',
           buildBarChart(labels, [
             { name: 'Debt Paydown', color: COLORS.spend, values: debt },
             { name: 'Savings', color: COLORS.savings, values: savings }
           ], { height: 160 }),
-          [{ name: 'Debt Paydown', color: COLORS.spend }, { name: 'Savings', color: COLORS.savings }]) +
+          [{ name: 'Auto Loan', color: COLORS.spend }, { name: 'Savings', color: COLORS.savings }]) +
 
         chartCard('Top 5 Categories Over Time', 'Biggest spending categories for the whole period.',
           buildLineChart(labels, catSeries, { height: 190 }),
@@ -729,9 +735,12 @@
         kpiCard('Debt Paydown', fmtMoney(s.debtPaydown), '');
 
       $('#summaryDebtCard').innerHTML =
-        '<div class="cat-row"><span>Credit Card Payments</span><span class="amt">' + fmtMoney(s.ccPayments) + '</span></div>' +
-        '<div class="cat-row"><span>Auto Loan Payment</span><span class="amt">' + fmtMoney(s.autoLoan) + '</span></div>' +
-        '<div class="cat-row"><span>Internal Savings Transfer</span><span class="amt">' + fmtMoney(s.savingsTransfer) + '</span></div>';
+        '<div class="cat-row"><span>Auto Loan Payment <small style="color:var(--muted)">· debt</small></span>' +
+          '<span class="amt">' + fmtMoney(s.autoLoan) + '</span></div>' +
+        '<div class="cat-row"><span>Credit Card Payment <small style="color:var(--muted)">· transfer, not debt</small></span>' +
+          '<span class="amt">' + fmtMoney(s.ccPayments) + '</span></div>' +
+        '<div class="cat-row"><span>Internal Savings Transfer <small style="color:var(--muted)">· transfer</small></span>' +
+          '<span class="amt">' + fmtMoney(s.savingsTransfer) + '</span></div>';
 
       $('#summaryCheckingCats').innerHTML = catRows(s.checkingCategories);
       $('#summaryCreditCats').innerHTML = catRows(s.creditCategories);
