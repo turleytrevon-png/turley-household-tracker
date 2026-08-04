@@ -17,6 +17,7 @@
     --accent: #4f8ef7;
     --accent2: #34d399;
     --danger: #f87171;
+    --warn: #fbbf24;
     --text: #e6edf3;
     --muted: #9fb1c1;
   }
@@ -36,6 +37,7 @@
   .kpi-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
   .kpi-value.negative { color: var(--danger); }
   .kpi-value.positive { color: var(--accent2); }
+  .kpi-sub { color: var(--muted); font-size: 11px; margin-top: 3px; }
   .section-title { font-size: 15px; font-weight: 600; margin: 20px 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
   .goal-card { margin-bottom: 12px; }
   .goal-card .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; gap: 8px; }
@@ -60,10 +62,10 @@
   .toast.error { color: var(--danger); }
   .toast.ok { color: var(--accent2); }
   .month-select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: var(--card); color: var(--text); font-size: 16px; margin-bottom: 16px; }
-  .summary-sub { font-size: 13px; font-weight: 600; color: var(--muted); margin: 4px 0 8px; }
   .cat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 14px; }
   .cat-row:last-child { border-bottom: none; }
   .cat-row .amt { font-weight: 600; }
+  .cat-row .amt.negative { color: var(--danger); }
   .txn-filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
   .txn-filters .row { display: flex; gap: 10px; }
   .txn-filters .row .field { flex: 1; margin: 0; }
@@ -76,9 +78,17 @@
   .txn-merchant { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .txn-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .txn-amount { font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .txn-amount.negative { color: var(--danger); }
+  .txn-amount.positive { color: var(--accent2); }
+  .chart-card { padding: 14px 10px 8px; margin-bottom: 14px; }
+  .chart-title { font-size: 14px; font-weight: 600; margin: 0 6px 2px; }
+  .chart-note { font-size: 11px; color: var(--muted); margin: 0 6px 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 6px 0; }
+  .legend span { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  .legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
   nav { display: flex; border-top: 1px solid rgba(255,255,255,0.08); background: var(--card); padding: 8px 0; position: fixed; bottom: 0; left: 0; right: 0; }
-  nav button { flex: 1; background: none; border: none; color: var(--muted); font-size: 11px; padding: 6px 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-  nav button .icon { font-size: 20px; }
+  nav button { flex: 1; background: none; border: none; color: var(--muted); font-size: 10px; padding: 6px 0; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  nav button .icon { font-size: 18px; }
   nav button.active { color: var(--accent); }
   .loading { text-align: center; color: var(--muted); padding: 40px 0; }
 
@@ -111,6 +121,11 @@
       <div class="kpi-grid" id="kpiGrid"><div class="loading">Loading dashboard…</div></div>
       <div class="section-title">Pooled Savings</div>
       <div class="card pooled-card" id="pooledCard"></div>
+    </section>
+
+    <section id="page-trends" class="page">
+      <div class="section-title">Trends Over Time</div>
+      <div id="trendsBody"><div class="loading">Loading trends…</div></div>
     </section>
 
     <section id="page-summary" class="page">
@@ -182,26 +197,13 @@
           <input type="number" id="f-amount" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" required>
         </div>
 
-        <div class="field" id="checkingFlowField">
+        <div class="field">
           <label>Flow</label>
           <div class="segmented" id="flowToggle">
-            <button type="button" data-value="Outflow" class="active">Outflow</button>
-            <button type="button" data-value="Income">Income</button>
+            <button type="button" data-value="Outflow" class="active">Money out</button>
+            <button type="button" data-value="Inflow">Money in</button>
           </div>
-        </div>
-
-        <div class="field" id="ccFields" style="display:none;">
-          <label>Cardholder</label>
-          <div class="segmented" id="cardholderToggle">
-            <button type="button" data-value="Trevon" class="active">Trevon</button>
-            <button type="button" data-value="Ainsley">Ainsley</button>
-            <button type="button" data-value="Fee">Fee</button>
-          </div>
-          <label style="margin-top:12px;">Type</label>
-          <div class="segmented" id="typeToggle">
-            <button type="button" data-value="Spend" class="active">Spend</button>
-            <button type="button" data-value="Payment">Payment</button>
-          </div>
+          <div class="goal-note" id="flowHint">Enter the amount as a positive number — this switch sets the sign.</div>
         </div>
 
         <button type="submit" class="submit-btn" id="submitBtn">Add Transaction</button>
@@ -212,8 +214,9 @@
   <div class="toast" id="toast"></div>
 
   <nav>
-    <button class="nav-btn active" data-page="dashboard"><span class="icon">🏠</span>Dashboard</button>
-    <button class="nav-btn" data-page="summary"><span class="icon">📊</span>Summary</button>
+    <button class="nav-btn active" data-page="dashboard"><span class="icon">🏠</span>Home</button>
+    <button class="nav-btn" data-page="trends"><span class="icon">📈</span>Trends</button>
+    <button class="nav-btn" data-page="summary"><span class="icon">📊</span>Month</button>
     <button class="nav-btn" data-page="goals"><span class="icon">🎯</span>Goals</button>
     <button class="nav-btn" data-page="transactions"><span class="icon">📋</span>History</button>
     <button class="nav-btn" data-page="add"><span class="icon">➕</span>Add</button>
@@ -232,6 +235,13 @@
     var num = Number(n);
     var sign = num < 0 ? '-' : '';
     return sign + '$' + Math.abs(num).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+  }
+
+  function fmtShort(n) {
+    var a = Math.abs(Number(n) || 0);
+    var sign = n < 0 ? '-' : '';
+    if (a >= 1000) return sign + '$' + (a / 1000).toFixed(a >= 10000 ? 0 : 1) + 'k';
+    return sign + '$' + a.toFixed(0);
   }
 
   function apiGet(action, params) {
@@ -286,6 +296,145 @@
     if (e.key === 'Enter') $('#gate-submit').click();
   });
 
+  // --- Charts (hand-rolled SVG — no library, so the page stays self-contained) ---
+  var COLORS = { income: '#34d399', spend: '#f87171', checking: '#4f8ef7', credit: '#fbbf24', savings: '#a78bfa' };
+  var LINE_COLORS = ['#4f8ef7', '#34d399', '#fbbf24', '#f87171', '#a78bfa'];
+
+  function chartFrame(W, H, padL, padT, plotW, plotH, maxV, minV, labels) {
+    var span = (maxV - minV) || 1;
+    var y = function(v) { return padT + plotH * (maxV - v) / span; };
+    var parts = [];
+    // When a chart crosses zero, label the zero line itself — a midpoint label
+    // lands next to the baseline and reads as if the baseline were that value.
+    var ticks = minV < 0 ? [maxV, 0, minV] : [maxV, (maxV + minV) / 2, minV];
+    ticks.forEach(function(v) {
+      var yy = y(v);
+      parts.push('<line x1="' + padL + '" y1="' + yy.toFixed(1) + '" x2="' + (W - 6) + '" y2="' + yy.toFixed(1) +
+        '" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>');
+      parts.push('<text x="' + (padL - 6) + '" y="' + (yy + 3.5).toFixed(1) +
+        '" text-anchor="end" font-size="9" fill="#9fb1c1">' + fmtShort(v) + '</text>');
+    });
+    return { y: y, parts: parts };
+  }
+
+  function xLabels(labels, padL, plotW, H, everyN) {
+    var step = plotW / labels.length;
+    return labels.map(function(lab, i) {
+      if (everyN > 1 && i % everyN !== 0 && i !== labels.length - 1) return '';
+      return '<text x="' + (padL + step * i + step / 2).toFixed(1) + '" y="' + (H - 7) +
+        '" text-anchor="middle" font-size="9" fill="#9fb1c1">' + lab + '</text>';
+    }).join('');
+  }
+
+  function buildBarChart(labels, series, opts) {
+    opts = opts || {};
+    var W = 340, H = opts.height || 180;
+    var padL = 42, padT = 10, padB = 22, padR = 6;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+
+    var maxV = 0, minV = 0;
+    if (opts.stacked) {
+      labels.forEach(function(_, i) {
+        var pos = 0, neg = 0;
+        series.forEach(function(s) { var v = s.values[i] || 0; if (v >= 0) pos += v; else neg += v; });
+        if (pos > maxV) maxV = pos;
+        if (neg < minV) minV = neg;
+      });
+    } else {
+      series.forEach(function(s) {
+        s.values.forEach(function(v) { if (v > maxV) maxV = v; if (v < minV) minV = v; });
+      });
+    }
+    if (maxV === 0 && minV === 0) maxV = 1;
+
+    var f = chartFrame(W, H, padL, padT, plotW, plotH, maxV, minV, labels);
+    var y = f.y, parts = f.parts;
+    var zeroY = y(0);
+    var groupW = plotW / labels.length;
+
+    labels.forEach(function(lab, i) {
+      var gx = padL + groupW * i;
+      if (opts.stacked) {
+        var acc = 0;
+        series.forEach(function(s) {
+          var v = s.values[i] || 0;
+          var y0 = y(acc), y1 = y(acc + v);
+          acc += v;
+          parts.push('<rect x="' + (gx + groupW * 0.22).toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) +
+            '" width="' + (groupW * 0.56).toFixed(1) + '" height="' + Math.max(Math.abs(y1 - y0), 0.5).toFixed(1) +
+            '" fill="' + s.color + '" rx="1.5"/>');
+        });
+      } else {
+        var bw = (groupW * 0.64) / series.length;
+        series.forEach(function(s, si) {
+          var v = s.values[i] || 0;
+          var y1 = y(v);
+          var fill = typeof s.color === 'function' ? s.color(v) : s.color;
+          parts.push('<rect x="' + (gx + groupW * 0.18 + bw * si).toFixed(1) + '" y="' + Math.min(zeroY, y1).toFixed(1) +
+            '" width="' + bw.toFixed(1) + '" height="' + Math.max(Math.abs(y1 - zeroY), 0.5).toFixed(1) +
+            '" fill="' + fill + '" rx="1.5"/>');
+        });
+      }
+    });
+
+    parts.push('<line x1="' + padL + '" y1="' + zeroY.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(1) +
+      '" stroke="rgba(255,255,255,0.22)" stroke-width="1"/>');
+    parts.push(xLabels(labels, padL, plotW, H, labels.length > 8 ? 2 : 1));
+
+    return svgWrap(W, H, parts);
+  }
+
+  // width:100% with height driven by the viewBox, so the chart fills a phone
+  // screen exactly and stays a sane size on anything wider.
+  function svgWrap(W, H, parts) {
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" preserveAspectRatio="xMidYMid meet" ' +
+      'style="display:block;height:auto;max-width:560px;margin:0 auto;">' + parts.join('') + '</svg>';
+  }
+
+  function buildLineChart(labels, series, opts) {
+    opts = opts || {};
+    var W = 340, H = opts.height || 180;
+    var padL = 42, padT = 10, padB = 22, padR = 6;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+
+    var maxV = 0, minV = 0;
+    series.forEach(function(s) {
+      s.values.forEach(function(v) { if (v > maxV) maxV = v; if (v < minV) minV = v; });
+    });
+    if (maxV === 0 && minV === 0) maxV = 1;
+
+    var f = chartFrame(W, H, padL, padT, plotW, plotH, maxV, minV, labels);
+    var y = f.y, parts = f.parts;
+    var step = plotW / labels.length;
+    var px = function(i) { return padL + step * i + step / 2; };
+
+    series.forEach(function(s) {
+      var d = s.values.map(function(v, i) { return (i ? 'L' : 'M') + px(i).toFixed(1) + ' ' + y(v).toFixed(1); }).join(' ');
+      parts.push('<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>');
+      s.values.forEach(function(v, i) {
+        parts.push('<circle cx="' + px(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="2" fill="' + s.color + '"/>');
+      });
+    });
+
+    parts.push(xLabels(labels, padL, plotW, H, labels.length > 8 ? 2 : 1));
+    return svgWrap(W, H, parts);
+  }
+
+  function legend(items) {
+    return '<div class="legend">' + items.map(function(it) {
+      return '<span><i style="background:' + it.color + '"></i>' + it.name + '</span>';
+    }).join('') + '</div>';
+  }
+
+  function chartCard(title, note, svg, legendItems) {
+    return '<div class="card chart-card">' +
+      '<div class="chart-title">' + title + '</div>' +
+      (note ? '<div class="chart-note">' + note + '</div>' : '') +
+      svg +
+      (legendItems ? legend(legendItems) : '') +
+      '</div>';
+  }
+
   // --- App ---
   function initApp() {
     $all('.nav-btn').forEach(function(btn) {
@@ -305,15 +454,7 @@
         });
       });
     }
-    ['accountToggle', 'flowToggle', 'cardholderToggle', 'typeToggle'].forEach(wireSegmented);
-
-    $('#accountToggle').addEventListener('click', function(e) {
-      var btn = e.target.closest('button');
-      if (!btn) return;
-      var val = btn.dataset.value;
-      $('#checkingFlowField').style.display = val === 'checking' ? 'block' : 'none';
-      $('#ccFields').style.display = val === 'credit' ? 'block' : 'none';
-    });
+    ['accountToggle', 'flowToggle'].forEach(wireSegmented);
 
     function activeValue(id) {
       var btn = document.querySelector('#' + id + ' button.active');
@@ -327,9 +468,10 @@
       setTimeout(function() { toast.classList.remove('show'); }, 3200);
     }
 
-    function kpiCard(label, value, cls) {
+    function kpiCard(label, value, cls, sub) {
       return '<div class="card"><div class="kpi-label">' + label + '</div>' +
-        '<div class="kpi-value ' + cls + '">' + value + '</div></div>';
+        '<div class="kpi-value ' + cls + '">' + value + '</div>' +
+        (sub ? '<div class="kpi-sub">' + sub + '</div>' : '') + '</div>';
     }
 
     function loadData() {
@@ -347,11 +489,12 @@
       var netClass = Number(data.kpis.netCashFlow) < 0 ? 'negative' : 'positive';
       var checkClass = Number(data.kpis.checkingChange) < 0 ? 'negative' : 'positive';
       $('#kpiGrid').innerHTML =
-        kpiCard('Avg Monthly Income', fmtMoney(data.kpis.avgIncome), 'positive') +
+        kpiCard('Avg Monthly Income', fmtMoney(data.kpis.avgIncome), 'positive', 'complete months only') +
         kpiCard('Avg Monthly Spend', fmtMoney(data.kpis.avgSpend), '') +
-        kpiCard('Net Cash Flow', fmtMoney(data.kpis.netCashFlow), netClass) +
-        kpiCard('Card Utilization', data.kpis.cardUtilization, '') +
-        kpiCard('6-Mo Checking Change', fmtMoney(data.kpis.checkingChange), checkClass) +
+        kpiCard('Net Cash Flow', fmtMoney(data.kpis.netCashFlow), netClass, 'per month') +
+        kpiCard('Card Utilization', data.kpis.cardUtilization, '',
+          fmtMoney(data.kpis.cardBalance) + ' of ' + fmtMoney(data.kpis.cardLimit)) +
+        kpiCard('Checking Change', fmtMoney(data.kpis.checkingChange), checkClass, 'year to date') +
         kpiCard('Top Spend Category', data.kpis.topCategory, '');
 
       $('#pooledCard').innerHTML =
@@ -385,7 +528,7 @@
 
     function txnRow(t) {
       var cls = Number(t.amount) < 0 ? 'negative' : 'positive';
-      var badge = t.account === 'credit' ? ('Credit Card' + (t.cardholder ? ' · ' + t.cardholder : '')) : 'Checking';
+      var badge = t.account === 'credit' ? 'Credit Card' : 'Checking';
       return '<div class="txn-row">' +
         '<div class="txn-main">' +
           '<div class="txn-merchant">' + t.merchant + '</div>' +
@@ -421,20 +564,23 @@
         allTransactions = data;
         applyTxnFilters();
         initSummary();
+        renderTrends();
       }).catch(function(err) {
         $('#txnList').innerHTML = '<div class="loading">Could not load transactions: ' + err + '</div>';
       });
     }
 
-    // --- Monthly Summary (checking + credit combined) ---
+    // --- Shared month maths -------------------------------------------------
+    // Sign convention: every row is negative when money left the household,
+    // on both Checking and Credit. So "spend" is always -amount.
     var MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    var CHECKING_EXCLUDE = { 'Income': true, 'Internal Savings Transfer': true, 'Credit Card Payments': true, 'Auto Loan Payment': true };
     var CREDIT_EXCLUDE = { 'Card Payment': true };
 
     function monthLabel(key) {
       var parts = key.split('-');
       return MONTH_NAMES[Number(parts[1]) - 1] + ' ' + parts[0];
     }
+    function shortMonth(key) { return MONTH_NAMES[Number(key.split('-')[1]) - 1]; }
 
     function computeMonthSummary(monthKey) {
       var checkingCatTotals = {};
@@ -451,7 +597,7 @@
           checkingCatTotals[t.category] = (checkingCatTotals[t.category] || 0) + (-t.amount);
         } else {
           if (CREDIT_EXCLUDE[t.category]) return;
-          creditCatTotals[t.category] = (creditCatTotals[t.category] || 0) + t.amount;
+          creditCatTotals[t.category] = (creditCatTotals[t.category] || 0) + (-t.amount);
         }
       });
 
@@ -475,6 +621,93 @@
       };
     }
 
+    function sortedMonthKeys() {
+      var months = {};
+      allTransactions.forEach(function(t) { months[t.date.slice(0, 7)] = true; });
+      return Object.keys(months).sort();
+    }
+
+    function lastMonthIsPartial(keys) {
+      if (!keys.length) return false;
+      var last = keys[keys.length - 1];
+      var latest = '';
+      allTransactions.forEach(function(t) {
+        if (t.date.slice(0, 7) === last && t.date > latest) latest = t.date;
+      });
+      var daysInMonth = new Date(Number(last.slice(0, 4)), Number(last.slice(5, 7)), 0).getDate();
+      return Number(latest.slice(8, 10)) < daysInMonth;
+    }
+
+    // --- Trends -------------------------------------------------------------
+    function renderTrends() {
+      var keys = sortedMonthKeys();
+      if (!keys.length) { $('#trendsBody').innerHTML = '<div class="loading">No data yet.</div>'; return; }
+
+      var partial = lastMonthIsPartial(keys);
+      var note = partial ? monthLabel(keys[keys.length - 1]) + ' is a partial month.' : '';
+      var labels = keys.map(shortMonth);
+      var months = keys.map(computeMonthSummary);
+
+      var income = months.map(function(m) { return m.income; });
+      var checkingSpend = months.map(function(m) { return m.checkingSpend; });
+      var creditSpend = months.map(function(m) { return m.creditSpend; });
+      var totalSpend = months.map(function(m) { return m.totalSpend; });
+      var net = months.map(function(m) { return m.netCashFlow; });
+      var savings = months.map(function(m) { return m.savingsTransfer; });
+      var debt = months.map(function(m) { return m.debtPaydown; });
+
+      // Top 5 spend categories across the whole period, tracked month by month.
+      var totals = {};
+      allTransactions.forEach(function(t) {
+        if (t.amount >= 0) return;
+        if (t.category === 'Internal Savings Transfer' || t.category === 'Credit Card Payments' ||
+            t.category === 'Auto Loan Payment' || t.category === 'Card Payment') return;
+        totals[t.category] = (totals[t.category] || 0) + (-t.amount);
+      });
+      var topCats = Object.keys(totals).sort(function(a, b) { return totals[b] - totals[a]; }).slice(0, 5);
+      var catSeries = topCats.map(function(cat, i) {
+        var byMonth = {};
+        allTransactions.forEach(function(t) {
+          if (t.category !== cat || t.amount >= 0) return;
+          var k = t.date.slice(0, 7);
+          byMonth[k] = (byMonth[k] || 0) + (-t.amount);
+        });
+        return { name: cat, color: LINE_COLORS[i % LINE_COLORS.length], values: keys.map(function(k) { return byMonth[k] || 0; }) };
+      });
+
+      $('#trendsBody').innerHTML =
+        chartCard('Income vs Spending', note,
+          buildBarChart(labels, [
+            { name: 'Income', color: COLORS.income, values: income },
+            { name: 'Spending', color: COLORS.spend, values: totalSpend }
+          ]),
+          [{ name: 'Income', color: COLORS.income }, { name: 'Spending', color: COLORS.spend }]) +
+
+        chartCard('Net Cash Flow', 'Income minus spending, debt paydown and savings transfers.',
+          buildBarChart(labels, [
+            { name: 'Net', color: function(v) { return v < 0 ? COLORS.spend : COLORS.income; }, values: net }
+          ], { height: 160 })) +
+
+        chartCard('Where the Spending Sits', 'Checking and credit card, stacked.',
+          buildBarChart(labels, [
+            { name: 'Checking', color: COLORS.checking, values: checkingSpend },
+            { name: 'Credit Card', color: COLORS.credit, values: creditSpend }
+          ], { stacked: true }),
+          [{ name: 'Checking', color: COLORS.checking }, { name: 'Credit Card', color: COLORS.credit }]) +
+
+        chartCard('Debt Paydown &amp; Savings', 'Money sent to debt and to the savings pool.',
+          buildBarChart(labels, [
+            { name: 'Debt Paydown', color: COLORS.spend, values: debt },
+            { name: 'Savings', color: COLORS.savings, values: savings }
+          ], { height: 160 }),
+          [{ name: 'Debt Paydown', color: COLORS.spend }, { name: 'Savings', color: COLORS.savings }]) +
+
+        chartCard('Top 5 Categories Over Time', 'Biggest spending categories for the whole period.',
+          buildLineChart(labels, catSeries, { height: 190 }),
+          catSeries.map(function(s) { return { name: s.name, color: s.color }; }));
+    }
+
+    // --- Monthly summary ----------------------------------------------------
     function catRows(list) {
       if (!list.length) return '<div class="loading">No spending in this category group.</div>';
       return list.map(function(c) {
@@ -505,9 +738,7 @@
     }
 
     function initSummary() {
-      var months = {};
-      allTransactions.forEach(function(t) { months[t.date.slice(0, 7)] = true; });
-      var monthKeys = Object.keys(months).sort().reverse();
+      var monthKeys = sortedMonthKeys().reverse();
       if (!monthKeys.length) return;
       $('#summaryMonth').innerHTML = monthKeys.map(function(k) {
         return '<option value="' + k + '">' + monthLabel(k) + '</option>';
@@ -548,9 +779,7 @@
         merchant: $('#f-merchant').value.trim(),
         category: $('#f-category').value.trim(),
         amount: $('#f-amount').value,
-        flow: activeValue('flowToggle'),
-        cardholder: activeValue('cardholderToggle'),
-        type: activeValue('typeToggle')
+        flow: activeValue('flowToggle')
       };
       $('#submitBtn').disabled = true;
       $('#submitBtn').textContent = 'Adding…';
@@ -560,8 +789,11 @@
         if (result.success) {
           showToast('Transaction added', false);
           $('#quickAddForm').reset();
+          $all('#flowToggle button').forEach(function(b, i) { b.classList.toggle('active', i === 0); });
+          $all('#accountToggle button').forEach(function(b, i) { b.classList.toggle('active', i === 0); });
           $('#f-date').value = new Date().toISOString().slice(0, 10);
           loadData();
+          loadTransactions();
         } else {
           showToast(result.error, true);
         }
