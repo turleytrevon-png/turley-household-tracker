@@ -89,6 +89,9 @@
   .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 6px 0; }
   .legend span { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
   .legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+  .bar-seg { cursor: pointer; }
+  .chart-tooltip { position: fixed; pointer-events: none; background: rgba(8,13,18,0.95); color: var(--text); font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.4); white-space: nowrap; display: none; z-index: 50; }
+  .chart-tooltip.show { display: block; }
   nav { display: flex; border-top: 1px solid rgba(255,255,255,0.08); background: var(--card); padding: 8px 0; position: fixed; bottom: 0; left: 0; right: 0; }
   nav button { flex: 1; background: none; border: none; color: var(--muted); font-size: 10px; padding: 6px 0; display: flex; flex-direction: column; align-items: center; gap: 3px; }
   nav button .icon { font-size: 18px; }
@@ -215,6 +218,7 @@
   </main>
 
   <div class="toast" id="toast"></div>
+  <div class="chart-tooltip" id="chartTooltip"></div>
 
   <nav>
     <button class="nav-btn active" data-page="dashboard"><span class="icon">🏠</span>Home</button>
@@ -363,7 +367,8 @@
           var v = s.values[i] || 0;
           var y0 = y(acc), y1 = y(acc + v);
           acc += v;
-          parts.push('<rect x="' + (gx + groupW * 0.22).toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) +
+          parts.push('<rect class="bar-seg" data-label="' + s.name + '" data-month="' + lab + '" data-value="' + v +
+            '" x="' + (gx + groupW * 0.22).toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) +
             '" width="' + (groupW * 0.56).toFixed(1) + '" height="' + Math.max(Math.abs(y1 - y0), 0.5).toFixed(1) +
             '" fill="' + s.color + '" rx="1.5"/>');
         });
@@ -373,7 +378,8 @@
           var v = s.values[i] || 0;
           var y1 = y(v);
           var fill = typeof s.color === 'function' ? s.color(v) : s.color;
-          parts.push('<rect x="' + (gx + groupW * 0.18 + bw * si).toFixed(1) + '" y="' + Math.min(zeroY, y1).toFixed(1) +
+          parts.push('<rect class="bar-seg" data-label="' + s.name + '" data-month="' + lab + '" data-value="' + v +
+            '" x="' + (gx + groupW * 0.18 + bw * si).toFixed(1) + '" y="' + Math.min(zeroY, y1).toFixed(1) +
             '" width="' + bw.toFixed(1) + '" height="' + Math.max(Math.abs(y1 - zeroY), 0.5).toFixed(1) +
             '" fill="' + fill + '" rx="1.5"/>');
         });
@@ -458,6 +464,21 @@
       });
     }
     ['accountToggle', 'flowToggle'].forEach(wireSegmented);
+
+    // Hover tooltip for the hand-rolled SVG bar charts. Delegated on the
+    // (static) trends page rather than the (re-rendered) chart container, so
+    // it keeps working across every renderTrends() call.
+    var chartTooltip = $('#chartTooltip');
+    function hideChartTooltip() { chartTooltip.classList.remove('show'); }
+    $('#page-trends').addEventListener('mousemove', function(e) {
+      var seg = e.target.closest && e.target.closest('.bar-seg');
+      if (!seg) { hideChartTooltip(); return; }
+      chartTooltip.textContent = seg.dataset.month + ' · ' + seg.dataset.label + ': ' + fmtMoney(seg.dataset.value);
+      chartTooltip.style.left = (e.clientX + 14) + 'px';
+      chartTooltip.style.top = (e.clientY + 14) + 'px';
+      chartTooltip.classList.add('show');
+    });
+    $('#page-trends').addEventListener('mouseleave', hideChartTooltip);
 
     function activeValue(id) {
       var btn = document.querySelector('#' + id + ' button.active');
