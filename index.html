@@ -11,110 +11,176 @@
 <link rel="icon" href="data:image/png;base64,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">
 <title>Turley Household</title>
 <style>
+  /* Dark UI can't show a drop shadow against a dark ground — it just muddies the
+     edge. Depth here comes from surface lightness plus a hairline, which is how
+     every current dark design system does it. Shadows are kept only for things
+     that genuinely float above the page (toast, tooltip, nav). */
   :root {
     --bg: #0f1720;
-    --card: #182430;
-    --card-border: rgba(255,255,255,0.07);
+    --card: #18242f;
+    --card-2: #202e3c;          /* inputs, raised controls, nested boxes */
+    --line: rgba(255,255,255,0.07);
+    --line-2: rgba(255,255,255,0.13);
+
+    --text: #e6edf3;
+    --muted: #93a4b7;           /* secondary text */
+    --faint: #6d7f93;           /* labels, captions, axis */
+
     --accent: #4f8ef7;
+    --accent-soft: rgba(79,142,247,0.14);
     --accent2: #34d399;
     --danger: #f87171;
-    --warn: #fbbf24;
-    --text: #e6edf3;
-    --muted: #9fb1c1;
-    --shadow: 0 1px 2px rgba(0,0,0,0.26), 0 14px 28px -16px rgba(0,0,0,0.6);
+
+    /* 4px grid. Every margin and pad below is one of these. */
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+    --r-row: 10px; --r-ctl: 12px; --r-card: 14px;
+
+    --float: 0 8px 24px rgba(0,0,0,0.45);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; height: 100%; overscroll-behavior: none; font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
   #app { display: none; flex-direction: column; height: 100vh; }
   #app.ready { display: flex; }
-  header { padding: 22px 20px 14px; max-width: 560px; margin: 0 auto; width: 100%; }
-  header h1 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
-  header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
-  main { flex: 1; overflow-y: auto; padding: 4px 16px 100px; -webkit-overflow-scrolling: touch; max-width: 560px; margin: 0 auto; width: 100%; }
+  header { padding: var(--s5) var(--s4) var(--s3); max-width: 560px; margin: 0 auto; width: 100%; }
+  header h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  header p { margin: var(--s1) 0 0; color: var(--faint); font-size: 12px; }
+  main { flex: 1; overflow-y: auto; padding: 0 var(--s4) 96px; -webkit-overflow-scrolling: touch; max-width: 560px; margin: 0 auto; width: 100%; }
   .page { display: none; }
   .page.active { display: block; }
-  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-  .card { background: var(--card); border: 1px solid var(--card-border); box-shadow: var(--shadow); border-radius: 18px; padding: 16px; }
-  .kpi-label { color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
-  .kpi-value { font-size: 23px; font-weight: 700; margin-top: 6px; letter-spacing: -0.01em; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-card); padding: var(--s4); }
+
+  /* Section headings: one quiet line of type. The old uppercase + letterspacing +
+     coloured bar stacked three signals on a label that only needs one. */
+  .section-title { font-size: 13px; font-weight: 600; margin: var(--s5) 0 var(--s3); color: var(--muted); }
+
+  /* --- KPIs --- */
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); margin-bottom: var(--s4); }
+  .kpi-grid .card { display: flex; flex-direction: column; justify-content: flex-start; padding: var(--s3) var(--s4) var(--s4); }
+  .kpi-label { color: var(--faint); font-size: 12px; font-weight: 500; }
+  .kpi-value { font-size: 22px; font-weight: 600; margin-top: var(--s1); letter-spacing: -0.02em; line-height: 1.15; }
   .kpi-value.negative { color: var(--danger); }
   .kpi-value.positive { color: var(--accent2); }
-  .kpi-sub { color: var(--muted); font-size: 11px; margin-top: 4px; }
-  .section-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; margin: 22px 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-  .section-title::before { content: ''; width: 3px; height: 12px; border-radius: 2px; background: var(--accent); flex-shrink: 0; }
-  .goal-card { margin-bottom: 12px; }
-  .goal-card .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; gap: 8px; }
-  .goal-card .name { font-weight: 600; font-size: 16px; }
+  /* A category name is a string in a slot built for a number — it needs to wrap
+     and sit at a readable size rather than blowing out the tile. */
+  .kpi-value.is-text { font-size: 16px; font-weight: 600; letter-spacing: 0; line-height: 1.3; }
+  .kpi-sub { color: var(--faint); font-size: 11px; margin-top: var(--s1); }
+
+  /* The one number worth leading with. Everything else is context for it. */
+  .kpi-hero { grid-column: 1 / -1; padding: var(--s4); }
+  /* An odd tile count leaves a half-empty last row. Rather than pad it out with
+     something invented, the tile that most wants the width takes the whole row. */
+  .kpi-wide { grid-column: 1 / -1; }
+  .kpi-hero .kpi-label { font-size: 13px; }
+  .kpi-hero .kpi-value { font-size: 34px; font-weight: 700; margin-top: var(--s2); }
+  .kpi-hero .kpi-sub { font-size: 12px; margin-top: var(--s2); }
+
+  /* --- Goals --- */
+  .goal-card { margin-bottom: var(--s2); }
+  .goal-card .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--s3); gap: var(--s2); }
+  .goal-card .name { font-weight: 600; font-size: 15px; }
   .goal-card .amounts { font-size: 13px; color: var(--muted); white-space: nowrap; }
-  .bar-track { background: rgba(255,255,255,0.07); border-radius: 8px; height: 10px; overflow: hidden; }
-  .bar-fill { background: linear-gradient(90deg, var(--accent), var(--accent2)); height: 100%; border-radius: 8px; transition: width 0.4s ease; }
-  .goal-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
-  .pooled-card p { display: flex; justify-content: space-between; margin: 7px 0; font-size: 14px; }
+  .bar-track { background: rgba(255,255,255,0.08); border-radius: 999px; height: 6px; overflow: hidden; }
+  .bar-fill { background: var(--accent); height: 100%; border-radius: 999px; transition: width 0.4s ease; }
+  .goal-note { font-size: 12px; color: var(--faint); margin-top: var(--s2); }
+
+  /* --- Pooled savings --- */
+  .pooled-card p { display: flex; justify-content: space-between; margin: 0; padding: var(--s2) 0; font-size: 14px; border-bottom: 1px solid var(--line); }
+  .pooled-card p:last-of-type { border-bottom: none; }
   .pooled-card .label { color: var(--muted); }
-  .reconcile { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); font-size: 13px; }
-  form { display: flex; flex-direction: column; gap: 14px; padding-top: 8px; }
-  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
-  .field input { width: 100%; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); font-size: 16px; transition: border-color 0.15s ease; }
-  .field input:focus { outline: none; border-color: var(--accent); }
-  .segmented { display: flex; background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 4px; }
-  .segmented button { flex: 1; padding: 10px; border: none; background: transparent; color: var(--muted); border-radius: 9px; font-size: 14px; font-weight: 600; transition: background 0.15s ease, color 0.15s ease; }
-  .segmented button.active { background: var(--accent); color: white; }
-  .submit-btn { padding: 15px; border-radius: 14px; border: none; background: var(--accent2); color: #04231a; font-weight: 700; font-size: 16px; margin-top: 4px; transition: transform 0.1s ease; }
-  .submit-btn:active { transform: scale(0.98); }
-  .submit-btn:disabled { opacity: 0.5; }
-  .toast { position: fixed; bottom: 96px; left: 16px; right: 16px; max-width: 520px; margin: 0 auto; background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 14px; text-align: center; font-size: 14px; box-shadow: var(--shadow); display: none; z-index: 10; }
+  .reconcile { margin-top: var(--s3); padding: var(--s3); border-radius: var(--r-row); background: var(--card-2); font-size: 13px; color: var(--muted); }
+
+  /* --- Forms --- */
+  form { display: flex; flex-direction: column; gap: var(--s4); padding-top: var(--s2); }
+  .field label { display: block; font-size: 12px; color: var(--faint); margin-bottom: var(--s2); font-weight: 500; }
+  .field input, .month-select, .txn-filters select { width: 100%; padding: var(--s3); border-radius: var(--r-ctl); border: 1px solid var(--line-2); background: var(--card-2); color: var(--text); font-size: 16px; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+  .field input:focus, .month-select:focus, .txn-filters select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .month-select { margin-bottom: var(--s4); }
+  .segmented { display: flex; background: var(--card-2); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: var(--s1); gap: var(--s1); }
+  .segmented button { flex: 1; padding: var(--s2) var(--s3); border: none; background: transparent; color: var(--muted); border-radius: var(--s2); font-size: 14px; font-weight: 500; transition: background 0.15s ease, color 0.15s ease; }
+  /* Selection reads as "this one is lit", not as a call to action. A solid accent
+     fill here competes with the actual submit button below it. */
+  .segmented button.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .submit-btn { padding: var(--s4); border-radius: var(--r-ctl); border: none; background: var(--accent); color: #fff; font-weight: 600; font-size: 16px; margin-top: var(--s1); transition: transform 0.1s ease, background 0.15s ease; }
+  .submit-btn:active { transform: scale(0.985); }
+  .submit-btn:disabled { opacity: 0.45; }
+
+  /* --- Floating layers: the only place a shadow earns its keep --- */
+  .toast { position: fixed; bottom: 96px; left: var(--s4); right: var(--s4); max-width: 520px; margin: 0 auto; background: var(--card-2); border: 1px solid var(--line-2); border-radius: var(--r-ctl); padding: var(--s3) var(--s4); text-align: center; font-size: 14px; box-shadow: var(--float); display: none; z-index: 10; }
   .toast.show { display: block; }
   .toast.error { color: var(--danger); }
   .toast.ok { color: var(--accent2); }
-  .month-select { width: 100%; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); font-size: 16px; margin-bottom: 16px; }
-  .cat-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 4px; margin: 0 -4px; border-radius: 10px; border-bottom: 1px solid var(--card-border); font-size: 14px; }
+  .chart-tooltip { position: fixed; pointer-events: none; background: var(--card-2); border: 1px solid var(--line-2); color: var(--text); font-size: 12px; font-weight: 500; padding: var(--s2) var(--s3); border-radius: var(--r-row); box-shadow: var(--float); white-space: nowrap; display: none; z-index: 50; }
+  .chart-tooltip.show { display: block; }
+
+  /* --- List rows --- */
+  .cat-row { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); padding: var(--s3) var(--s1); margin: 0 calc(var(--s1) * -1); border-radius: var(--r-row); border-bottom: 1px solid var(--line); font-size: 14px; }
   .cat-row:last-child { border-bottom: none; }
-  .cat-row .amt { font-weight: 600; }
+  .cat-row .amt { font-weight: 600; white-space: nowrap; }
   .cat-row .amt.negative { color: var(--danger); }
   .cat-row-link { cursor: pointer; transition: background 0.12s ease; }
   .cat-row-link:active { background: rgba(255,255,255,0.05); }
-  .cat-row .chev { color: var(--muted); margin-left: 6px; font-weight: 400; }
-  .txn-filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
-  .txn-filters .row { display: flex; gap: 10px; }
+  .cat-row .chev { color: var(--faint); margin-left: var(--s2); font-weight: 400; }
+
+  .txn-filters { display: flex; flex-direction: column; gap: var(--s3); margin-bottom: var(--s4); }
+  .txn-filters .row { display: flex; gap: var(--s3); }
   .txn-filters .row .field { flex: 1; margin: 0; }
-  .txn-filters select { width: 100%; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); font-size: 15px; }
-  .txn-clear { background: none; border: 1px solid var(--card-border); color: var(--muted); border-radius: 12px; padding: 10px; font-size: 13px; font-weight: 600; transition: transform 0.1s ease; }
-  .txn-clear:active { transform: scale(0.98); }
-  .txn-count { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
-  .txn-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 4px; margin: 0 -4px; border-bottom: 1px solid var(--card-border); gap: 10px; }
+  .txn-clear { background: none; border: 1px solid var(--line-2); color: var(--muted); border-radius: var(--r-ctl); padding: var(--s3); font-size: 13px; font-weight: 500; transition: transform 0.1s ease, border-color 0.15s ease; }
+  .txn-clear:active { transform: scale(0.985); border-color: var(--accent); }
+  .txn-count { color: var(--faint); font-size: 12px; margin-bottom: var(--s2); }
+  .txn-row { display: flex; justify-content: space-between; align-items: center; padding: var(--s3) var(--s1); border-bottom: 1px solid var(--line); gap: var(--s3); }
   .txn-row:last-child { border-bottom: none; }
   .txn-main { min-width: 0; }
-  .txn-merchant { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .txn-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .txn-amount { font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .txn-merchant { font-weight: 500; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .txn-meta { font-size: 12px; color: var(--faint); margin-top: 2px; }
+  .txn-amount { font-weight: 600; font-size: 14px; white-space: nowrap; }
   .txn-amount.negative { color: var(--danger); }
   .txn-amount.positive { color: var(--accent2); }
-  .chart-card { padding: 16px 12px 10px; margin-bottom: 14px; }
-  .chart-title { font-size: 14px; font-weight: 700; margin: 0 6px 2px; }
-  .chart-note { font-size: 11px; color: var(--muted); margin: 0 6px 8px; }
-  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 6px 0; }
-  .legend span { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
-  .legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+  /* --- Charts --- */
+  .chart-card { padding: var(--s4) var(--s3) var(--s3); margin-bottom: var(--s3); }
+  .chart-title { font-size: 15px; font-weight: 600; margin: 0 var(--s1) 2px; }
+  .chart-note { font-size: 11px; color: var(--faint); margin: 0 var(--s1) var(--s3); line-height: 1.45; }
+  .legend { display: flex; flex-wrap: wrap; gap: var(--s3); margin: var(--s2) var(--s1) 0; }
+  .legend span { display: flex; align-items: center; gap: var(--s1); font-size: 11px; color: var(--faint); }
+  .legend i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
   .bar-seg { cursor: pointer; }
-  .chart-tooltip { position: fixed; pointer-events: none; background: rgba(6,10,15,0.96); color: var(--text); font-size: 12px; font-weight: 600; padding: 7px 11px; border-radius: 10px; box-shadow: var(--shadow); white-space: nowrap; display: none; z-index: 50; }
-  .chart-tooltip.show { display: block; }
-  nav { display: flex; gap: 2px; border-top: 1px solid var(--card-border); background: rgba(24,36,48,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); position: fixed; bottom: 0; left: 0; right: 0; max-width: 560px; margin: 0 auto; }
-  nav button { flex: 1; background: none; border: none; color: var(--muted); font-size: 10px; font-weight: 600; padding: 7px 2px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: background 0.15s ease, color 0.15s ease; }
+
+  .spark-row { display: flex; align-items: center; gap: var(--s2); padding: var(--s3) var(--s1); border-bottom: 1px solid var(--line); border-radius: var(--r-row); cursor: pointer; transition: background 0.12s ease; }
+  .spark-row:last-child { border-bottom: none; }
+  .spark-row:active { background: rgba(255,255,255,0.05); }
+  .spark-main { flex: 1; min-width: 0; }
+  /* 13px fits the longest everyday category on one line at 390px. Longer names
+     ("Personal Transfers (Venmo/Zelle)") wrap to a second line rather than being
+     clipped — a truncated category name is the one thing this row can't afford
+     to hide, since the name is what the row is for. */
+  .spark-name { font-size: 13px; font-weight: 500; line-height: 1.3; }
+  .spark-total { font-size: 12px; color: var(--faint); margin-top: 2px; }
+  .spark-svg { flex-shrink: 0; }
+  .spark-delta { font-size: 12px; font-weight: 600; width: 38px; text-align: right; flex-shrink: 0; color: var(--faint); }
+  .spark-delta.up { color: var(--danger); }
+  .spark-delta.down { color: var(--accent2); }
+
+  /* --- Nav --- */
+  nav { display: flex; gap: var(--s1); border-top: 1px solid var(--line); background: rgba(24,36,47,0.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: var(--s2) var(--s2) calc(var(--s2) + env(safe-area-inset-bottom)); position: fixed; bottom: 0; left: 0; right: 0; max-width: 560px; margin: 0 auto; }
+  nav button { flex: 1; background: none; border: none; color: var(--faint); font-size: 10px; font-weight: 500; padding: var(--s2) 2px; border-radius: var(--r-row); display: flex; flex-direction: column; align-items: center; gap: var(--s1); transition: color 0.15s ease; }
   nav button .icon { display: flex; }
-  nav button .icon svg { width: 21px; height: 21px; }
-  nav button.active { color: var(--accent); background: rgba(79,142,247,0.13); }
-  .loading { text-align: center; color: var(--muted); padding: 40px 0; animation: pulse 1.4s ease-in-out infinite; }
+  nav button .icon svg { width: 20px; height: 20px; }
+  nav button.active { color: var(--accent); }
+
+  .loading { text-align: center; color: var(--faint); padding: var(--s6) 0; animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
 
-  #gate { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 24px; text-align: center; }
+  /* --- Passphrase gate --- */
+  #gate { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: var(--s5); text-align: center; }
   #gate.hidden { display: none; }
-  #gate h1 { font-size: 21px; font-weight: 700; margin-bottom: 8px; }
-  #gate p { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
-  #gate input { width: 100%; max-width: 280px; padding: 14px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); font-size: 16px; text-align: center; margin-bottom: 14px; transition: border-color 0.15s ease; }
-  #gate input:focus { outline: none; border-color: var(--accent); }
-  #gate button { width: 100%; max-width: 280px; padding: 14px; border-radius: 14px; border: none; background: var(--accent); color: white; font-weight: 700; font-size: 16px; transition: transform 0.1s ease; }
-  #gate button:active { transform: scale(0.98); }
-  #gate .gate-error { color: var(--danger); font-size: 13px; margin-top: 12px; min-height: 16px; }
+  #gate h1 { font-size: 20px; font-weight: 600; margin: 0 0 var(--s2); }
+  #gate p { color: var(--muted); font-size: 13px; margin: 0 0 var(--s5); }
+  #gate input { width: 100%; max-width: 280px; padding: var(--s3) var(--s4); border-radius: var(--r-ctl); border: 1px solid var(--line-2); background: var(--card-2); color: var(--text); font-size: 16px; text-align: center; margin-bottom: var(--s3); transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+  #gate input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  #gate button { width: 100%; max-width: 280px; padding: var(--s3) var(--s4); border-radius: var(--r-ctl); border: none; background: var(--accent); color: #fff; font-weight: 600; font-size: 16px; transition: transform 0.1s ease; }
+  #gate button:active { transform: scale(0.985); }
+  #gate .gate-error { color: var(--danger); font-size: 13px; margin-top: var(--s3); min-height: 16px; }
 </style>
 </head>
 <body>
@@ -261,6 +327,8 @@
     return sign + '$' + a.toFixed(0);
   }
 
+  function attrEscape(s) { return String(s).replace(/"/g, '&quot;'); }
+
   function apiGet(action, params) {
     var pass = localStorage.getItem(PASS_KEY);
     var qs = 'action=' + encodeURIComponent(action) + '&pass=' + encodeURIComponent(pass);
@@ -315,7 +383,14 @@
 
   // --- Charts (hand-rolled SVG — no library, so the page stays self-contained) ---
   var COLORS = { income: '#34d399', spend: '#f87171', checking: '#4f8ef7', credit: '#fbbf24', savings: '#a78bfa' };
-  var LINE_COLORS = ['#4f8ef7', '#34d399', '#fbbf24', '#f87171', '#a78bfa'];
+  // Every category row is one colour. Once each category has its own chart the
+  // hue carries no information — the name is right next to it — so six hues was
+  // just noise. Colour is spent on the one thing that means something here: the
+  // change column, red for spending up and green for down.
+  var SPARK_COLOR = '#4f8ef7';
+  var AXIS_TEXT = '#6d7f93';
+  var GRID_LINE = 'rgba(255,255,255,0.07)';
+  var ZERO_LINE = 'rgba(255,255,255,0.20)';
 
   function chartFrame(W, H, padL, padT, plotW, plotH, maxV, minV, labels) {
     var span = (maxV - minV) || 1;
@@ -327,9 +402,9 @@
     ticks.forEach(function(v) {
       var yy = y(v);
       parts.push('<line x1="' + padL + '" y1="' + yy.toFixed(1) + '" x2="' + (W - 6) + '" y2="' + yy.toFixed(1) +
-        '" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>');
+        '" stroke="' + GRID_LINE + '" stroke-width="1"/>');
       parts.push('<text x="' + (padL - 6) + '" y="' + (yy + 3.5).toFixed(1) +
-        '" text-anchor="end" font-size="9" fill="#9fb1c1">' + fmtShort(v) + '</text>');
+        '" text-anchor="end" font-size="9" fill="' + AXIS_TEXT + '">' + fmtShort(v) + '</text>');
     });
     return { y: y, parts: parts };
   }
@@ -339,7 +414,7 @@
     return labels.map(function(lab, i) {
       if (everyN > 1 && i % everyN !== 0 && i !== labels.length - 1) return '';
       return '<text x="' + (padL + step * i + step / 2).toFixed(1) + '" y="' + (H - 7) +
-        '" text-anchor="middle" font-size="9" fill="#9fb1c1">' + lab + '</text>';
+        '" text-anchor="middle" font-size="9" fill="' + AXIS_TEXT + '">' + lab + '</text>';
     }).join('');
   }
 
@@ -397,7 +472,7 @@
     });
 
     parts.push('<line x1="' + padL + '" y1="' + zeroY.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(1) +
-      '" stroke="rgba(255,255,255,0.22)" stroke-width="1"/>');
+      '" stroke="' + ZERO_LINE + '" stroke-width="1"/>');
     parts.push(xLabels(labels, padL, plotW, H, labels.length > 8 ? 2 : 1));
 
     return svgWrap(W, H, parts);
@@ -410,33 +485,57 @@
       'style="display:block;height:auto;max-width:560px;margin:0 auto;">' + parts.join('') + '</svg>';
   }
 
-  function buildLineChart(labels, series, opts) {
-    opts = opts || {};
-    var W = 340, H = opts.height || 180;
-    var padL = 42, padT = 10, padB = 22, padR = 6;
-    var plotW = W - padL - padR, plotH = H - padT - padB;
+  // Small multiples: one tiny chart per category instead of one chart with every
+  // category on it. Five lines sharing a phone-width plot was unreadable, and a
+  // line implies values between the months that don't exist — a month's spend is
+  // a bucket, so bars are the honest mark. Each row is scaled to its OWN max, so
+  // Groceries being ten times Shopping doesn't flatten Shopping into nothing.
+  // That trades away cross-category size comparison, which the Month tab's
+  // "Spending by Category" list already does better than a chart can.
+  function buildSparkRow(s, partialLast) {
+    // 80px, not wider: on a 390px phone the fixed columns have to leave room for
+    // the longest real category name ("Entertainment & Subscriptions") to sit
+    // unclipped. Six bars still read clearly at this size.
+    var W = 80, H = 26, n = s.values.length;
+    var slot = W / n, bw = Math.max(2, slot - 3);
+    var max = 0;
+    s.values.forEach(function(v) { if (v > max) max = v; });
+    if (max <= 0) max = 1;
 
-    var maxV = 0, minV = 0;
-    series.forEach(function(s) {
-      s.values.forEach(function(v) { if (v > maxV) maxV = v; if (v < minV) minV = v; });
-    });
-    if (maxV === 0 && minV === 0) maxV = 1;
+    var bars = s.values.map(function(v, i) {
+      var h = Math.max(1.5, (v / max) * (H - 2));
+      // The last month is dimmed when it's still in progress — at full strength
+      // a half-finished month reads as a real drop in spending.
+      var dim = (partialLast && i === n - 1) ? ' opacity="0.45"' : '';
+      return '<rect x="' + (slot * i + (slot - bw) / 2).toFixed(1) + '" y="' + (H - h).toFixed(1) +
+        '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) +
+        '" fill="' + s.color + '" rx="2"' + dim + '/>';
+    }).join('');
 
-    var f = chartFrame(W, H, padL, padT, plotW, plotH, maxV, minV, labels);
-    var y = f.y, parts = f.parts;
-    var step = plotW / labels.length;
-    var px = function(i) { return padL + step * i + step / 2; };
+    var d = s.delta;
+    var cls = d === null ? '' : (d > 5 ? 'up' : (d < -5 ? 'down' : ''));
+    var txt = d === null ? '--' : (Math.abs(d) <= 5 ? 'flat' : (d > 0 ? '+' : '') + d + '%');
 
-    series.forEach(function(s) {
-      var d = s.values.map(function(v, i) { return (i ? 'L' : 'M') + px(i).toFixed(1) + ' ' + y(v).toFixed(1); }).join(' ');
-      parts.push('<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>');
-      s.values.forEach(function(v, i) {
-        parts.push('<circle cx="' + px(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="2" fill="' + s.color + '"/>');
-      });
-    });
+    return '<div class="spark-row" data-category="' + attrEscape(s.name) + '">' +
+      '<div class="spark-main">' +
+        '<div class="spark-name">' + s.name + '</div>' +
+        '<div class="spark-total">' + fmtMoney(s.total) + ' total</div>' +
+      '</div>' +
+      '<svg class="spark-svg" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '">' + bars + '</svg>' +
+      '<div class="spark-delta ' + cls + '">' + txt + '</div>' +
+    '</div>';
+  }
 
-    parts.push(xLabels(labels, padL, plotW, H, labels.length > 8 ? 2 : 1));
-    return svgWrap(W, H, parts);
+  // Last complete month against the average of the complete months before it.
+  // Deliberately ignores the in-progress month, which would always read as a
+  // collapse. Null when there aren't two complete months to compare.
+  function trendDelta(values, completeCount) {
+    if (completeCount < 2) return null;
+    var last = values[completeCount - 1], sum = 0;
+    for (var i = 0; i < completeCount - 1; i++) sum += values[i];
+    var avg = sum / (completeCount - 1);
+    if (avg <= 0) return null;
+    return Math.round(((last - avg) / avg) * 100);
   }
 
   function legend(items) {
@@ -502,8 +601,12 @@
       setTimeout(function() { toast.classList.remove('show'); }, 3200);
     }
 
-    function kpiCard(label, value, cls, sub) {
-      return '<div class="card"><div class="kpi-label">' + label + '</div>' +
+    // cardCls carries 'kpi-hero' for the one figure a screen leads with. Six
+    // identically-sized tiles gave every number the same importance, which meant
+    // none of them read as the answer to "are we okay this month".
+    function kpiCard(label, value, cls, sub, cardCls) {
+      return '<div class="card' + (cardCls ? ' ' + cardCls : '') + '">' +
+        '<div class="kpi-label">' + label + '</div>' +
         '<div class="kpi-value ' + cls + '">' + value + '</div>' +
         (sub ? '<div class="kpi-sub">' + sub + '</div>' : '') + '</div>';
     }
@@ -523,13 +626,14 @@
       var netClass = Number(data.kpis.netCashFlow) < 0 ? 'negative' : 'positive';
       var checkClass = Number(data.kpis.checkingChange) < 0 ? 'negative' : 'positive';
       $('#kpiGrid').innerHTML =
-        kpiCard('Avg Monthly Income', fmtMoney(data.kpis.avgIncome), 'positive', 'complete months only') +
+        kpiCard('Net Cash Flow', fmtMoney(data.kpis.netCashFlow), netClass,
+          'average per month, complete months only', 'kpi-hero') +
+        kpiCard('Avg Monthly Income', fmtMoney(data.kpis.avgIncome), 'positive') +
         kpiCard('Avg Monthly Spend', fmtMoney(data.kpis.avgSpend), '') +
-        kpiCard('Net Cash Flow', fmtMoney(data.kpis.netCashFlow), netClass, 'per month') +
         kpiCard('Card Utilization', data.kpis.cardUtilization, '',
           fmtMoney(data.kpis.cardBalance) + ' of ' + fmtMoney(data.kpis.cardLimit)) +
         kpiCard('Checking Change', fmtMoney(data.kpis.checkingChange), checkClass, 'year to date') +
-        kpiCard('Top Spend Category', data.kpis.topCategory, '');
+        kpiCard('Top Variable Spend', data.kpis.topCategory, 'is-text', 'fixed costs excluded', 'kpi-wide');
 
       $('#pooledCard').innerHTML =
         '<p><span class="label">Seed Balance</span><span>' + fmtMoney(data.pooled.seedBalance) + '</span></p>' +
@@ -609,6 +713,14 @@
     // on both Checking and Credit. So "spend" is always -amount.
     var MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     var CREDIT_EXCLUDE = { 'Card Payment': true };
+
+    // Real spending, but the same every month and nothing to decide about, so it
+    // crowds out the categories worth looking at. Hidden from anything that RANKS
+    // categories; still counted in every total (Net Cash Flow, Avg Monthly Spend,
+    // Income vs Spending, and the Month tab's full category breakdown).
+    // Student Loans and Insurance are the same kind of thing when you want them.
+    // Mirrored by FIXED_COSTS in WebApp.gs, which ranks the Dashboard KPI.
+    var FIXED_COSTS = { 'Rent/Housing': true };
 
     function monthLabel(key) {
       var parts = key.split('-');
@@ -695,24 +807,40 @@
       var savings = months.map(function(m) { return m.savingsTransfer; });
       var debt = months.map(function(m) { return m.debtPaydown; });
 
-      // Top 5 spend categories across the whole period, tracked month by month.
+      // Biggest variable spend categories across the whole period, each tracked
+      // month by month. Transfers aren't spending; fixed costs are, but they're
+      // the same number every month and never win the attention they'd take.
+      var completeCount = partial ? keys.length - 1 : keys.length;
       var totals = {};
       allTransactions.forEach(function(t) {
         if (t.amount >= 0) return;
         if (t.category === 'Internal Savings Transfer' || t.category === 'Credit Card Payments' ||
             t.category === 'Auto Loan Payment' || t.category === 'Card Payment') return;
+        if (FIXED_COSTS[t.category]) return;
         totals[t.category] = (totals[t.category] || 0) + (-t.amount);
       });
-      var topCats = Object.keys(totals).sort(function(a, b) { return totals[b] - totals[a]; }).slice(0, 5);
-      var catSeries = topCats.map(function(cat, i) {
+      var topCats = Object.keys(totals).sort(function(a, b) { return totals[b] - totals[a]; }).slice(0, 6);
+      var catSeries = topCats.map(function(cat) {
         var byMonth = {};
         allTransactions.forEach(function(t) {
           if (t.category !== cat || t.amount >= 0) return;
           var k = t.date.slice(0, 7);
           byMonth[k] = (byMonth[k] || 0) + (-t.amount);
         });
-        return { name: cat, color: LINE_COLORS[i % LINE_COLORS.length], values: keys.map(function(k) { return byMonth[k] || 0; }) };
+        var values = keys.map(function(k) { return byMonth[k] || 0; });
+        return {
+          name: cat,
+          color: SPARK_COLOR,
+          values: values,
+          total: totals[cat],
+          delta: trendDelta(values, completeCount)
+        };
       });
+
+      // Sparklines carry no axis of their own, so the span and the reading of the
+      // change column have to be stated once here.
+      var spanNote = monthLabel(keys[0]) + ' → ' + monthLabel(keys[keys.length - 1]) +
+        ', one bar per month. Fixed costs excluded. Change is the last full month against its earlier average.';
 
       $('#trendsBody').innerHTML =
         chartCard('Income vs Spending', note,
@@ -742,14 +870,11 @@
           ], { height: 160 }),
           [{ name: 'Auto Loan', color: COLORS.spend }, { name: 'Savings', color: COLORS.savings }]) +
 
-        chartCard('Top 5 Categories Over Time', 'Biggest spending categories for the whole period.',
-          buildLineChart(labels, catSeries, { height: 190 }),
-          catSeries.map(function(s) { return { name: s.name, color: s.color }; }));
+        chartCard('Top Variable Categories', spanNote,
+          catSeries.map(function(s) { return buildSparkRow(s, partial); }).join(''));
     }
 
     // --- Monthly summary ----------------------------------------------------
-    function attrEscape(s) { return String(s).replace(/"/g, '&quot;'); }
-
     function catRows(list) {
       if (!list.length) return '<div class="loading">No spending in this category group.</div>';
       return list.map(function(c) {
@@ -800,17 +925,32 @@
       });
     });
 
+    // Same tap-through from the Trends rows, but with no date range — a Trends
+    // row covers the whole period, not one month. Delegated on the static page
+    // element because #trendsBody is replaced on every renderTrends().
+    $('#page-trends').addEventListener('click', function(e) {
+      var row = e.target.closest && e.target.closest('.spark-row');
+      if (!row) return;
+      ensureCategoryOption(row.dataset.category);
+      $('#tf-from').value = '';
+      $('#tf-to').value = '';
+      $('#tf-category').value = row.dataset.category;
+      applyTxnFilters();
+      switchToPage('transactions');
+    });
+
     function renderSummary(monthKey) {
       var s = computeMonthSummary(monthKey);
       var netClass = s.netCashFlow < 0 ? 'negative' : 'positive';
 
       $('#summaryKpiGrid').innerHTML =
+        kpiCard('Net Cash Flow', fmtMoney(s.netCashFlow), netClass,
+          monthLabel(monthKey), 'kpi-hero') +
         kpiCard('Income', fmtMoney(s.income), 'positive') +
+        kpiCard('Total Household Spend', fmtMoney(s.totalSpend), '') +
         kpiCard('Checking Spend', fmtMoney(s.checkingSpend), '') +
         kpiCard('Credit Card Spend', fmtMoney(s.creditSpend), '') +
-        kpiCard('Total Household Spend', fmtMoney(s.totalSpend), '') +
-        kpiCard('Net Cash Flow', fmtMoney(s.netCashFlow), netClass) +
-        kpiCard('Debt Paydown', fmtMoney(s.debtPaydown), '');
+        kpiCard('Debt Paydown', fmtMoney(s.debtPaydown), '', '', 'kpi-wide');
 
       $('#summaryDebtCard').innerHTML =
         '<div class="cat-row"><span>Auto Loan Payment <small style="color:var(--muted)">· debt</small></span>' +
