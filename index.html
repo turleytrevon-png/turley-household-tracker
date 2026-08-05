@@ -14,68 +14,74 @@
   :root {
     --bg: #0f1720;
     --card: #182430;
+    --card-border: rgba(255,255,255,0.07);
     --accent: #4f8ef7;
     --accent2: #34d399;
     --danger: #f87171;
     --warn: #fbbf24;
     --text: #e6edf3;
     --muted: #9fb1c1;
+    --shadow: 0 1px 2px rgba(0,0,0,0.26), 0 14px 28px -16px rgba(0,0,0,0.6);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; height: 100%; overscroll-behavior: none; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; height: 100%; overscroll-behavior: none; font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
   #app { display: none; flex-direction: column; height: 100vh; }
   #app.ready { display: flex; }
-  header { padding: 20px 20px 12px; }
-  header h1 { margin: 0; font-size: 22px; }
+  header { padding: 22px 20px 14px; max-width: 560px; margin: 0 auto; width: 100%; }
+  header h1 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
   header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
-  main { flex: 1; overflow-y: auto; padding: 0 16px 90px; -webkit-overflow-scrolling: touch; }
+  main { flex: 1; overflow-y: auto; padding: 4px 16px 100px; -webkit-overflow-scrolling: touch; max-width: 560px; margin: 0 auto; width: 100%; }
   .page { display: none; }
   .page.active { display: block; }
-  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-  .card { background: var(--card); border-radius: 16px; padding: 16px; }
-  .kpi-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
-  .kpi-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .card { background: var(--card); border: 1px solid var(--card-border); box-shadow: var(--shadow); border-radius: 18px; padding: 16px; }
+  .kpi-label { color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+  .kpi-value { font-size: 23px; font-weight: 700; margin-top: 6px; letter-spacing: -0.01em; }
   .kpi-value.negative { color: var(--danger); }
   .kpi-value.positive { color: var(--accent2); }
-  .kpi-sub { color: var(--muted); font-size: 11px; margin-top: 3px; }
-  .section-title { font-size: 15px; font-weight: 600; margin: 20px 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .kpi-sub { color: var(--muted); font-size: 11px; margin-top: 4px; }
+  .section-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; margin: 22px 0 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .section-title::before { content: ''; width: 3px; height: 12px; border-radius: 2px; background: var(--accent); flex-shrink: 0; }
   .goal-card { margin-bottom: 12px; }
   .goal-card .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; gap: 8px; }
   .goal-card .name { font-weight: 600; font-size: 16px; }
   .goal-card .amounts { font-size: 13px; color: var(--muted); white-space: nowrap; }
-  .bar-track { background: rgba(255,255,255,0.08); border-radius: 8px; height: 10px; overflow: hidden; }
-  .bar-fill { background: var(--accent); height: 100%; border-radius: 8px; transition: width 0.4s ease; }
+  .bar-track { background: rgba(255,255,255,0.07); border-radius: 8px; height: 10px; overflow: hidden; }
+  .bar-fill { background: linear-gradient(90deg, var(--accent), var(--accent2)); height: 100%; border-radius: 8px; transition: width 0.4s ease; }
   .goal-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
-  .pooled-card p { display: flex; justify-content: space-between; margin: 6px 0; font-size: 14px; }
+  .pooled-card p { display: flex; justify-content: space-between; margin: 7px 0; font-size: 14px; }
   .pooled-card .label { color: var(--muted); }
-  .reconcile { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.06); font-size: 13px; }
+  .reconcile { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); font-size: 13px; }
   form { display: flex; flex-direction: column; gap: 14px; padding-top: 8px; }
-  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-  .field input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: var(--card); color: var(--text); font-size: 16px; }
-  .segmented { display: flex; background: var(--card); border-radius: 10px; padding: 4px; }
-  .segmented button { flex: 1; padding: 10px; border: none; background: transparent; color: var(--muted); border-radius: 8px; font-size: 14px; font-weight: 600; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+  .field input { width: 100%; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); font-size: 16px; transition: border-color 0.15s ease; }
+  .field input:focus { outline: none; border-color: var(--accent); }
+  .segmented { display: flex; background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 4px; }
+  .segmented button { flex: 1; padding: 10px; border: none; background: transparent; color: var(--muted); border-radius: 9px; font-size: 14px; font-weight: 600; transition: background 0.15s ease, color 0.15s ease; }
   .segmented button.active { background: var(--accent); color: white; }
-  .submit-btn { padding: 14px; border-radius: 12px; border: none; background: var(--accent2); color: #04231a; font-weight: 700; font-size: 16px; margin-top: 4px; }
+  .submit-btn { padding: 15px; border-radius: 14px; border: none; background: var(--accent2); color: #04231a; font-weight: 700; font-size: 16px; margin-top: 4px; transition: transform 0.1s ease; }
+  .submit-btn:active { transform: scale(0.98); }
   .submit-btn:disabled { opacity: 0.5; }
-  .toast { position: fixed; bottom: 90px; left: 16px; right: 16px; background: var(--card); border-radius: 12px; padding: 14px; text-align: center; font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: none; z-index: 10; }
+  .toast { position: fixed; bottom: 96px; left: 16px; right: 16px; max-width: 520px; margin: 0 auto; background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 14px; text-align: center; font-size: 14px; box-shadow: var(--shadow); display: none; z-index: 10; }
   .toast.show { display: block; }
   .toast.error { color: var(--danger); }
   .toast.ok { color: var(--accent2); }
-  .month-select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: var(--card); color: var(--text); font-size: 16px; margin-bottom: 16px; }
-  .cat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 14px; }
+  .month-select { width: 100%; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); font-size: 16px; margin-bottom: 16px; }
+  .cat-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 4px; margin: 0 -4px; border-radius: 10px; border-bottom: 1px solid var(--card-border); font-size: 14px; }
   .cat-row:last-child { border-bottom: none; }
   .cat-row .amt { font-weight: 600; }
   .cat-row .amt.negative { color: var(--danger); }
-  .cat-row-link { cursor: pointer; }
-  .cat-row-link:active { background: rgba(255,255,255,0.04); }
+  .cat-row-link { cursor: pointer; transition: background 0.12s ease; }
+  .cat-row-link:active { background: rgba(255,255,255,0.05); }
   .cat-row .chev { color: var(--muted); margin-left: 6px; font-weight: 400; }
   .txn-filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
   .txn-filters .row { display: flex; gap: 10px; }
   .txn-filters .row .field { flex: 1; margin: 0; }
-  .txn-filters select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: var(--card); color: var(--text); font-size: 15px; }
-  .txn-clear { background: none; border: 1px solid rgba(255,255,255,0.12); color: var(--muted); border-radius: 10px; padding: 10px; font-size: 13px; font-weight: 600; }
+  .txn-filters select { width: 100%; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); font-size: 15px; }
+  .txn-clear { background: none; border: 1px solid var(--card-border); color: var(--muted); border-radius: 12px; padding: 10px; font-size: 13px; font-weight: 600; transition: transform 0.1s ease; }
+  .txn-clear:active { transform: scale(0.98); }
   .txn-count { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
-  .txn-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.06); gap: 10px; }
+  .txn-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 4px; margin: 0 -4px; border-bottom: 1px solid var(--card-border); gap: 10px; }
   .txn-row:last-child { border-bottom: none; }
   .txn-main { min-width: 0; }
   .txn-merchant { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -83,27 +89,31 @@
   .txn-amount { font-weight: 700; font-size: 14px; white-space: nowrap; }
   .txn-amount.negative { color: var(--danger); }
   .txn-amount.positive { color: var(--accent2); }
-  .chart-card { padding: 14px 10px 8px; margin-bottom: 14px; }
-  .chart-title { font-size: 14px; font-weight: 600; margin: 0 6px 2px; }
+  .chart-card { padding: 16px 12px 10px; margin-bottom: 14px; }
+  .chart-title { font-size: 14px; font-weight: 700; margin: 0 6px 2px; }
   .chart-note { font-size: 11px; color: var(--muted); margin: 0 6px 8px; }
   .legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 6px 0; }
   .legend span { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
   .legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
   .bar-seg { cursor: pointer; }
-  .chart-tooltip { position: fixed; pointer-events: none; background: rgba(8,13,18,0.95); color: var(--text); font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.4); white-space: nowrap; display: none; z-index: 50; }
+  .chart-tooltip { position: fixed; pointer-events: none; background: rgba(6,10,15,0.96); color: var(--text); font-size: 12px; font-weight: 600; padding: 7px 11px; border-radius: 10px; box-shadow: var(--shadow); white-space: nowrap; display: none; z-index: 50; }
   .chart-tooltip.show { display: block; }
-  nav { display: flex; border-top: 1px solid rgba(255,255,255,0.08); background: var(--card); padding: 8px 0; position: fixed; bottom: 0; left: 0; right: 0; }
-  nav button { flex: 1; background: none; border: none; color: var(--muted); font-size: 10px; padding: 6px 0; display: flex; flex-direction: column; align-items: center; gap: 3px; }
-  nav button .icon { font-size: 18px; }
-  nav button.active { color: var(--accent); }
-  .loading { text-align: center; color: var(--muted); padding: 40px 0; }
+  nav { display: flex; gap: 2px; border-top: 1px solid var(--card-border); background: rgba(24,36,48,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); position: fixed; bottom: 0; left: 0; right: 0; max-width: 560px; margin: 0 auto; }
+  nav button { flex: 1; background: none; border: none; color: var(--muted); font-size: 10px; font-weight: 600; padding: 7px 2px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: background 0.15s ease, color 0.15s ease; }
+  nav button .icon { display: flex; }
+  nav button .icon svg { width: 21px; height: 21px; }
+  nav button.active { color: var(--accent); background: rgba(79,142,247,0.13); }
+  .loading { text-align: center; color: var(--muted); padding: 40px 0; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
 
   #gate { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 24px; text-align: center; }
   #gate.hidden { display: none; }
-  #gate h1 { font-size: 20px; margin-bottom: 8px; }
+  #gate h1 { font-size: 21px; font-weight: 700; margin-bottom: 8px; }
   #gate p { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
-  #gate input { width: 100%; max-width: 280px; padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: var(--card); color: var(--text); font-size: 16px; text-align: center; margin-bottom: 14px; }
-  #gate button { width: 100%; max-width: 280px; padding: 14px; border-radius: 12px; border: none; background: var(--accent); color: white; font-weight: 700; font-size: 16px; }
+  #gate input { width: 100%; max-width: 280px; padding: 14px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); font-size: 16px; text-align: center; margin-bottom: 14px; transition: border-color 0.15s ease; }
+  #gate input:focus { outline: none; border-color: var(--accent); }
+  #gate button { width: 100%; max-width: 280px; padding: 14px; border-radius: 14px; border: none; background: var(--accent); color: white; font-weight: 700; font-size: 16px; transition: transform 0.1s ease; }
+  #gate button:active { transform: scale(0.98); }
   #gate .gate-error { color: var(--danger); font-size: 13px; margin-top: 12px; min-height: 16px; }
 </style>
 </head>
@@ -221,12 +231,12 @@
   <div class="chart-tooltip" id="chartTooltip"></div>
 
   <nav>
-    <button class="nav-btn active" data-page="dashboard"><span class="icon">🏠</span>Home</button>
-    <button class="nav-btn" data-page="trends"><span class="icon">📈</span>Trends</button>
-    <button class="nav-btn" data-page="summary"><span class="icon">📊</span>Month</button>
-    <button class="nav-btn" data-page="goals"><span class="icon">🎯</span>Goals</button>
-    <button class="nav-btn" data-page="transactions"><span class="icon">📋</span>History</button>
-    <button class="nav-btn" data-page="add"><span class="icon">➕</span>Add</button>
+    <button class="nav-btn active" data-page="dashboard"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7"/><path d="M5 10v10a1 1 0 0 0 1 1h3v-7h6v7h3a1 1 0 0 0 1-1V10"/></svg></span>Home</button>
+    <button class="nav-btn" data-page="trends"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>Trends</button>
+    <button class="nav-btn" data-page="summary"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>Month</button>
+    <button class="nav-btn" data-page="goals"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg></span>Goals</button>
+    <button class="nav-btn" data-page="transactions"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span>History</button>
+    <button class="nav-btn" data-page="add"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>Add</button>
   </nav>
 </div>
 
@@ -370,7 +380,7 @@
           parts.push('<rect class="bar-seg" data-label="' + s.name + '" data-month="' + lab + '" data-value="' + v +
             '" x="' + (gx + groupW * 0.22).toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) +
             '" width="' + (groupW * 0.56).toFixed(1) + '" height="' + Math.max(Math.abs(y1 - y0), 0.5).toFixed(1) +
-            '" fill="' + s.color + '" rx="1.5"/>');
+            '" fill="' + s.color + '" rx="3"/>');
         });
       } else {
         var bw = (groupW * 0.64) / series.length;
@@ -381,7 +391,7 @@
           parts.push('<rect class="bar-seg" data-label="' + s.name + '" data-month="' + lab + '" data-value="' + v +
             '" x="' + (gx + groupW * 0.18 + bw * si).toFixed(1) + '" y="' + Math.min(zeroY, y1).toFixed(1) +
             '" width="' + bw.toFixed(1) + '" height="' + Math.max(Math.abs(y1 - zeroY), 0.5).toFixed(1) +
-            '" fill="' + fill + '" rx="1.5"/>');
+            '" fill="' + fill + '" rx="3"/>');
         });
       }
     });
