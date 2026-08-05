@@ -66,6 +66,9 @@
   .cat-row:last-child { border-bottom: none; }
   .cat-row .amt { font-weight: 600; }
   .cat-row .amt.negative { color: var(--danger); }
+  .cat-row-link { cursor: pointer; }
+  .cat-row-link:active { background: rgba(255,255,255,0.04); }
+  .cat-row .chev { color: var(--muted); margin-left: 6px; font-weight: 400; }
   .txn-filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
   .txn-filters .row { display: flex; gap: 10px; }
   .txn-filters .row .field { flex: 1; margin: 0; }
@@ -437,13 +440,13 @@
 
   // --- App ---
   function initApp() {
+    function switchToPage(pageName) {
+      $all('.nav-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.page === pageName); });
+      $all('.page').forEach(function(p) { p.classList.toggle('active', p.id === 'page-' + pageName); });
+    }
+
     $all('.nav-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        $all('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
-        $all('.page').forEach(function(p) { p.classList.remove('active'); });
-        btn.classList.add('active');
-        $('#page-' + btn.dataset.page).classList.add('active');
-      });
+      btn.addEventListener('click', function() { switchToPage(btn.dataset.page); });
     });
 
     function wireSegmented(id) {
@@ -714,13 +717,57 @@
     }
 
     // --- Monthly summary ----------------------------------------------------
+    function attrEscape(s) { return String(s).replace(/"/g, '&quot;'); }
+
     function catRows(list) {
       if (!list.length) return '<div class="loading">No spending in this category group.</div>';
       return list.map(function(c) {
         var cls = c.amount < 0 ? 'negative' : '';
-        return '<div class="cat-row"><span>' + c.category + '</span><span class="amt ' + cls + '">' + fmtMoney(c.amount) + '</span></div>';
+        return '<div class="cat-row cat-row-link" data-category="' + attrEscape(c.category) + '">' +
+          '<span>' + c.category + '</span>' +
+          '<span class="amt ' + cls + '">' + fmtMoney(c.amount) + '<span class="chev">›</span></span>' +
+          '</div>';
       }).join('');
     }
+
+    // Tapping a category row jumps to History pre-filtered to that category
+    // and the month currently shown in Summary.
+    function monthDateRange(monthKey) {
+      var parts = monthKey.split('-');
+      var year = Number(parts[0]), month = Number(parts[1]);
+      var lastDay = new Date(year, month, 0).getDate();
+      var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+      return { from: monthKey + '-01', to: monthKey + '-' + pad(lastDay) };
+    }
+
+    function ensureCategoryOption(category) {
+      var sel = $('#tf-category');
+      var exists = Array.prototype.some.call(sel.options, function(o) { return o.value === category; });
+      if (!exists) {
+        var opt = document.createElement('option');
+        opt.value = category;
+        opt.textContent = category;
+        sel.appendChild(opt);
+      }
+    }
+
+    function goToHistoryFiltered(category, monthKey) {
+      var range = monthDateRange(monthKey);
+      ensureCategoryOption(category);
+      $('#tf-from').value = range.from;
+      $('#tf-to').value = range.to;
+      $('#tf-category').value = category;
+      applyTxnFilters();
+      switchToPage('transactions');
+    }
+
+    ['summaryCheckingCats', 'summaryCreditCats'].forEach(function(id) {
+      $('#' + id).addEventListener('click', function(e) {
+        var row = e.target.closest('.cat-row-link');
+        if (!row) return;
+        goToHistoryFiltered(row.dataset.category, $('#summaryMonth').value);
+      });
+    });
 
     function renderSummary(monthKey) {
       var s = computeMonthSummary(monthKey);
