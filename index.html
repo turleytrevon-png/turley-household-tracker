@@ -791,7 +791,7 @@
     function computeMonthSummary(monthKey) {
       var checkingCatTotals = {};
       var creditCatTotals = {};
-      var income = 0, ccPayments = 0, autoLoan = 0, savingsTransfer = 0;
+      var income = 0, ccPayments = 0, autoLoan = 0, creditLine = 0, savingsTransfer = 0;
 
       allTransactions.forEach(function(t) {
         if (t.date.slice(0, 7) !== monthKey) return;
@@ -799,6 +799,7 @@
           if (t.category === 'Income') { income += t.amount; return; }
           if (t.category === 'Credit Card Payments') { ccPayments += -t.amount; return; }
           if (t.category === 'Auto Loan Payment') { autoLoan += -t.amount; return; }
+          if (t.category === 'Credit Line Payment') { creditLine += -t.amount; return; }
           if (t.category === 'Internal Savings Transfer') { savingsTransfer += -t.amount; return; }
           checkingCatTotals[t.category] = (checkingCatTotals[t.category] || 0) + (-t.amount);
         } else {
@@ -819,14 +820,14 @@
 
       // Paying the credit card is a transfer between our own accounts, NOT debt
       // paydown — that spending was already counted the day it happened. Debt
-      // paydown is the auto loan only. Net cash flow therefore counts credit
+      // paydown is the auto loan plus the L0074 credit line. Net cash flow counts credit
       // spending when it HAPPENS rather than when the card gets paid.
-      var debtPaydown = autoLoan;
-      var netCashFlow = income - checkingSpend - creditSpend - autoLoan - savingsTransfer;
+      var debtPaydown = autoLoan + creditLine;
+      var netCashFlow = income - checkingSpend - creditSpend - autoLoan - creditLine - savingsTransfer;
 
       return {
         income: income, checkingSpend: checkingSpend, creditSpend: creditSpend,
-        totalSpend: checkingSpend + creditSpend, ccPayments: ccPayments, autoLoan: autoLoan,
+        totalSpend: checkingSpend + creditSpend, ccPayments: ccPayments, autoLoan: autoLoan, creditLine: creditLine,
         debtPaydown: debtPaydown, savingsTransfer: savingsTransfer, netCashFlow: netCashFlow,
         checkingCategories: checkingCategories, creditCategories: creditCategories
       };
@@ -923,12 +924,12 @@
           [{ name: 'Checking', color: COLORS.checking }, { name: 'Credit Card', color: COLORS.credit }]) +
 
         chartCard('Debt Paydown &amp; Savings',
-          'Auto loan only — paying the credit card is a transfer, not debt paydown.',
+          'Auto loan and credit line — paying the credit card is a transfer, not debt paydown.',
           buildBarChart(labels, [
             { name: 'Debt Paydown', color: COLORS.spend, values: debt },
             { name: 'Savings', color: COLORS.savings, values: savings }
           ], { height: 160 }),
-          [{ name: 'Auto Loan', color: COLORS.spend }, { name: 'Savings', color: COLORS.savings }]) +
+          [{ name: 'Debt Paydown', color: COLORS.spend }, { name: 'Savings', color: COLORS.savings }]) +
 
         chartCard('Top Variable Categories', spanNote,
           catSeries.map(function(s) { return buildSparkRow(s, partial); }).join(''));
@@ -1018,6 +1019,8 @@
       $('#summaryDebtCard').innerHTML =
         '<div class="cat-row"><span>Auto loan payment <small style="color:var(--faint)">· debt</small></span>' +
           '<span class="amt">' + fmtMoney(s.autoLoan) + '</span></div>' +
+        (s.creditLine ? '<div class="cat-row"><span>Credit line payment <small style="color:var(--faint)">· debt</small></span>' +
+          '<span class="amt">' + fmtMoney(s.creditLine) + '</span></div>' : '') +
         '<div class="cat-row"><span>Credit card payment <small style="color:var(--faint)">· transfer, not debt</small></span>' +
           '<span class="amt">' + fmtMoney(s.ccPayments) + '</span></div>' +
         '<div class="cat-row"><span>Internal savings transfer <small style="color:var(--faint)">· transfer</small></span>' +
