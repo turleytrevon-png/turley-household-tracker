@@ -249,8 +249,6 @@
       <div class="subview active" id="spendMonth">
         <select class="month-select" id="summaryMonth"></select>
         <div class="kpi-grid" id="summaryKpiGrid"></div>
-        <div class="section-title">Budget</div>
-        <div id="summaryBudgets"></div>
         <div class="section-title">Transfers and debt</div>
         <div class="card" id="summaryDebtCard"></div>
         <div class="section-title">Spending by category</div>
@@ -262,8 +260,15 @@
       </div>
     </section>
 
+    <!-- Budgets and savings goals answer the same question — are we on track —
+         and already share a visual language, so they share a page. Budgets are
+         the monthly half, goals the long-run half. -->
     <section id="page-goals" class="page">
-      <div class="section-title">Goals</div>
+      <div class="section-title">Budget</div>
+      <div class="chart-note" id="budgetMonthNote"></div>
+      <div class="seg" id="personFilter" style="display:none"></div>
+      <div id="budgetList"><div class="loading">Loading budgets…</div></div>
+      <div class="section-title">Savings goals</div>
       <div id="goalsList"><div class="loading">Loading goals…</div></div>
     </section>
 
@@ -733,6 +738,25 @@
       }).join('');
     }
 
+    // Targets come from the Sheet's Budget tab. renderBudgets() guards on
+    // budgetDefs being null, so whichever of these two fetches lands second is
+    // the one that paints — no ordering assumption between them.
+    apiGet('budgets').then(function(data) {
+      budgetDefs = (data && data.error) ? [] : (data || []);
+      if (data && data.error) showToast('Could not load budgets: ' + data.error, true);
+      renderBudgets();
+    }).catch(function(err) {
+      budgetDefs = [];
+      $('#budgetList').innerHTML = '<div class="loading">Could not load budgets: ' + err + '</div>';
+    });
+
+    $('#personFilter').addEventListener('click', function(e) {
+      var btn = e.target.closest && e.target.closest('button[data-person]');
+      if (!btn) return;
+      personFilter = btn.dataset.person || '';
+      renderBudgets();
+    });
+
     apiGet('categories').then(function(categories) {
       if (categories.error) return;
       $('#category-list').innerHTML = categories.map(function(c) { return '<option value="' + c + '">'; }).join('');
@@ -868,6 +892,7 @@
         applyTxnFilters();
         initSummary();
         renderTrends();
+        renderBudgets();
       }).catch(function(err) {
         $('#txnList').innerHTML = '<div class="loading">Could not load transactions: ' + err + '</div>';
       });
@@ -1111,98 +1136,138 @@
     });
 
     // --- Budgets -----------------------------------------------------------
-    // TEMPORARY LOCATION. These belong in a `Budget` tab in the Sheet, read
-    // through the API the way `Goals` already is, so a number can change without
-    // a deploy. They are here only because WebApp.gs is not available to add a
-    // `budgets` action yet. Moving them is a small change; do it when it is.
-    //
-    // `perPerson` is recorded now but NOT used: attributing a row to a person
-    // needs a card field the schema does not have yet. It is the target that
-    // applies once the per-person filter exists.
-    var BUDGETS = [
-      { name: 'Savings',           categories: ['Internal Savings Transfer'],   monthly: 1300,
-        method: 'month', better: 'up',   note: '$600 every two weeks' },
-      { name: 'Groceries',         categories: ['Groceries'],                   monthly: 700,
-        method: 'avg3', better: 'down' },
-      { name: 'Shopping',          categories: ['Shopping & Retail', 'Target'], monthly: 500,
-        method: 'month', better: 'down', perPerson: 250, note: 'Shopping & Retail + Target' },
-      { name: 'Dining & Takeout',  categories: ['Dining & Takeout'],            monthly: 350,
-        method: 'month', better: 'down', perPerson: 100, note: 'includes $150 date night' },
-      { name: 'Buy Now Pay Later', categories: ['Buy Now Pay Later'],           monthly: 0,
-        method: 'month', better: 'down', note: 'target is zero' }
-    ];
+    // The targets are an INPUT, read from the Sheet's `Budget` tab through
+    // action=budgets, exactly like Goals. Changing a target is a Sheet edit, not
+    // a deploy. Null until the fetch lands; every render guards on that.
+    var budgetDefs = null;
+    var personFilter = '';        // '' = everyone, otherwise a person's name
 
     // Outflows only, so a refund reduces the month the way it actually did.
     // Savings transfers are negative on checking like any other outflow, so this
     // works for them unchanged.
-    function monthCategoryTotal(monthKey, cats) {
+    function monthCategoryTotal(monthKey, cats, person) {
       var total = 0;
       allTransactions.forEach(function(t) {
         if (t.date.slice(0, 7) !== monthKey) return;
         if (t.amount >= 0) return;
         if (cats.indexOf(t.category) === -1) return;
+        if (person && t.person !== person) return;
         total += -t.amount;
       });
       return total;
     }
 
+    // Everyone the data can actually attribute a row to. 'Unassigned' is not a
+    // person, so it is excluded — which is why the filter stays hidden until a
+    // card has actually been recorded on a row.
+    function peopleInData() {
+      var seen = {};
+      allTransactions.forEach(function(t) {
+        if (t.person && t.person !== 'Unassigned') seen[t.person] = true;
+      });
+      return Object.keys(seen).sort();
+    }
+
     // Groceries swings 3x month to month because of big stock-up trips, so a
     // single calendar month flags a problem that isn't one. Averaged over the
     // selected month and the two before it.
-    function trailingAverage(monthKey, cats, n) {
+    function trailingAverage(monthKey, cats, n, person) {
       var keys = sortedMonthKeys();
       var i = keys.indexOf(monthKey);
       if (i < 0) return { value: 0, months: 0 };
       var window = keys.slice(Math.max(0, i - n + 1), i + 1);
       var sum = 0;
-      window.forEach(function(k) { sum += monthCategoryTotal(k, cats); });
+      window.forEach(function(k) { sum += monthCategoryTotal(k, cats, person); });
       return { value: window.length ? sum / window.length : 0, months: window.length };
     }
 
-    function renderBudgets(monthKey) {
+    // Budgets live on the Goals page and always show the LATEST month, because
+    // that page answers "how are we doing" rather than "what happened in June".
+    // The Spending tab is where a specific month gets picked apart.
+    function renderBudgets() {
+      var host = $('#budgetList');
+      if (!budgetDefs) { host.innerHTML = '<div class="loading">Loading budgets\u2026</div>'; return; }
+      if (!budgetDefs.length) {
+        host.innerHTML = '<div class="loading">No budgets set. Add rows to the Budget tab in the Sheet.</div>';
+        $('#budgetMonthNote').textContent = '';
+        return;
+      }
       var keys = sortedMonthKeys();
-      var isCurrent = keys.length && monthKey === keys[keys.length - 1];
-      var partial = isCurrent && lastMonthIsPartial(keys);
+      if (!keys.length) { host.innerHTML = '<div class="loading">No data yet.</div>'; return; }
 
-      var caveat = partial
-        ? '<div class="chart-note" style="margin:0 0 var(--s4)">' +
-            monthLabel(monthKey) + ' is still in progress, so every figure here is a part-month total.</div>'
-        : '';
-      $('#summaryBudgets').innerHTML = caveat + BUDGETS.map(function(b) {
+      var monthKey = keys[keys.length - 1];
+      var partial = lastMonthIsPartial(keys);
+
+      renderPersonFilter();
+
+      // Only budgets with a per-person target can be split. Savings, Groceries
+      // and Buy Now Pay Later are household concepts and do not divide, so they
+      // are hidden rather than shown against a target that does not apply.
+      var defs = personFilter
+        ? budgetDefs.filter(function(b) { return b.perPerson !== null && b.perPerson !== undefined; })
+        : budgetDefs;
+
+      var subject = personFilter ? personFilter : 'the household';
+      $('#budgetMonthNote').textContent = monthLabel(monthKey) +
+        (partial ? ', still in progress' : '') + ' \u00b7 ' + subject +
+        (personFilter ? ' \u00b7 household-only budgets hidden' : '');
+
+      if (!defs.length) {
+        host.innerHTML = '<div class="loading">No per-person budgets are set.</div>';
+        return;
+      }
+
+      host.innerHTML = defs.map(function(b) {
+        var target = personFilter ? b.perPerson : b.monthly;
         var actual, basis;
         if (b.method === 'avg3') {
-          var ta = trailingAverage(monthKey, b.categories, 3);
+          var ta = trailingAverage(monthKey, b.categories, 3, personFilter);
           actual = ta.value;
           basis = ta.months + '-month average';
         } else {
-          actual = monthCategoryTotal(monthKey, b.categories);
+          actual = monthCategoryTotal(monthKey, b.categories, personFilter);
           basis = '';
         }
 
         var up = b.better === 'up';
         // A zero target cannot be a ratio. Any spend against it is simply missed.
-        var pct = b.monthly > 0 ? Math.min(100, (actual / b.monthly) * 100)
-                                : (actual > 0 ? 100 : 0);
-        var missed = up ? (actual < b.monthly - 0.005) : (actual > b.monthly + 0.005);
-        var delta = actual - b.monthly;
-        var deltaTxt = delta === 0 ? 'on target'
+        var pct = target > 0 ? Math.min(100, (actual / target) * 100)
+                             : (actual > 0 ? 100 : 0);
+        var missed = up ? (actual < target - 0.005) : (actual > target + 0.005);
+        var delta = actual - target;
+        var deltaTxt = Math.abs(delta) < 0.005 ? 'on target'
           : fmtMoney(Math.abs(delta)) + (delta > 0 ? ' over' : ' under');
-        if (up && delta > 0) deltaTxt = fmtMoney(delta) + ' ahead';
-        if (up && delta < 0) deltaTxt = fmtMoney(Math.abs(delta)) + ' short';
+        if (up && delta >= 0.005) deltaTxt = fmtMoney(delta) + ' ahead';
+        if (up && delta <= -0.005) deltaTxt = fmtMoney(Math.abs(delta)) + ' short';
 
-        // The partial-month caveat is stated ONCE below the section title rather
-        // than repeated on every row, where five copies of it drowned the numbers.
         var notes = [deltaTxt];
         if (basis) notes.push(basis);
         if (b.note) notes.push(b.note);
 
         return '<div class="card goal-card">' +
           '<div class="row"><span class="name">' + b.name + '</span>' +
-          '<span class="amounts">' + fmtMoney(actual) + ' / ' + fmtMoney(b.monthly) + '</span></div>' +
+          '<span class="amounts">' + fmtMoney(actual) + ' / ' + fmtMoney(target) + '</span></div>' +
           '<div class="bar-track"><div class="bar-fill ' + (missed ? 'bad' : 'good') +
             '" style="width:' + pct.toFixed(1) + '%"></div></div>' +
           '<div class="goal-note">' + notes.join(' \u00b7 ') + '</div>' +
           '</div>';
+      }).join('');
+    }
+
+    // Hidden until the data can actually attribute a row to somebody. Every row
+    // written before the Card column existed is 'Unassigned', so showing a
+    // Trevon/Ainsley control today would be a control that does nothing.
+    function renderPersonFilter() {
+      var people = peopleInData();
+      var el = $('#personFilter');
+      if (!people.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+      el.style.display = '';
+      var opts = [{ value: '', label: 'Everyone' }].concat(people.map(function(p) {
+        return { value: p, label: p };
+      }));
+      el.innerHTML = opts.map(function(o) {
+        return '<button type="button" data-person="' + attrEscape(o.value) + '"' +
+               (o.value === personFilter ? ' class="active"' : '') + '>' + o.label + '</button>';
       }).join('');
     }
 
@@ -1233,7 +1298,6 @@
           '<span class="amt">' + fmtMoney(s.savingsTransfer) + '</span></div>';
 
       $('#summaryCats').innerHTML = catRows(s.categories);
-      renderBudgets(monthKey);
     }
 
     function initSummary() {
