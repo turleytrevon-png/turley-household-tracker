@@ -124,6 +124,10 @@
   .goal-card .amounts { font-size: 13px; color: var(--muted); white-space: nowrap; }
   .bar-track { background: rgba(255,255,255,0.07); border-radius: var(--r-pill); height: 5px; overflow: hidden; }
   .bar-fill { background: var(--accent); height: 100%; border-radius: var(--r-pill); transition: width 0.5s cubic-bezier(0.2,0.8,0.2,1); }
+  /* Colour carries meaning only: a bar goes red when the budget is missed, which
+     is over target for spending and UNDER target for savings. */
+  .bar-fill.bad { background: var(--neg); }
+  .bar-fill.good { background: var(--pos); }
   .goal-note { font-size: 12px; color: var(--faint); margin-top: var(--s2); }
 
   /* --- Pooled savings ----------------------------------------------------- */
@@ -245,6 +249,8 @@
       <div class="subview active" id="spendMonth">
         <select class="month-select" id="summaryMonth"></select>
         <div class="kpi-grid" id="summaryKpiGrid"></div>
+        <div class="section-title">Budget</div>
+        <div id="summaryBudgets"></div>
         <div class="section-title">Transfers and debt</div>
         <div class="card" id="summaryDebtCard"></div>
         <div class="section-title">Spending by category</div>
@@ -1104,6 +1110,102 @@
       switchToPage('transactions');
     });
 
+    // --- Budgets -----------------------------------------------------------
+    // TEMPORARY LOCATION. These belong in a `Budget` tab in the Sheet, read
+    // through the API the way `Goals` already is, so a number can change without
+    // a deploy. They are here only because WebApp.gs is not available to add a
+    // `budgets` action yet. Moving them is a small change; do it when it is.
+    //
+    // `perPerson` is recorded now but NOT used: attributing a row to a person
+    // needs a card field the schema does not have yet. It is the target that
+    // applies once the per-person filter exists.
+    var BUDGETS = [
+      { name: 'Savings',           categories: ['Internal Savings Transfer'],   monthly: 1300,
+        method: 'month', better: 'up',   note: '$600 every two weeks' },
+      { name: 'Groceries',         categories: ['Groceries'],                   monthly: 700,
+        method: 'avg3', better: 'down' },
+      { name: 'Shopping',          categories: ['Shopping & Retail', 'Target'], monthly: 500,
+        method: 'month', better: 'down', perPerson: 250, note: 'Shopping & Retail + Target' },
+      { name: 'Dining & Takeout',  categories: ['Dining & Takeout'],            monthly: 350,
+        method: 'month', better: 'down', perPerson: 100, note: 'includes $150 date night' },
+      { name: 'Buy Now Pay Later', categories: ['Buy Now Pay Later'],           monthly: 0,
+        method: 'month', better: 'down', note: 'target is zero' }
+    ];
+
+    // Outflows only, so a refund reduces the month the way it actually did.
+    // Savings transfers are negative on checking like any other outflow, so this
+    // works for them unchanged.
+    function monthCategoryTotal(monthKey, cats) {
+      var total = 0;
+      allTransactions.forEach(function(t) {
+        if (t.date.slice(0, 7) !== monthKey) return;
+        if (t.amount >= 0) return;
+        if (cats.indexOf(t.category) === -1) return;
+        total += -t.amount;
+      });
+      return total;
+    }
+
+    // Groceries swings 3x month to month because of big stock-up trips, so a
+    // single calendar month flags a problem that isn't one. Averaged over the
+    // selected month and the two before it.
+    function trailingAverage(monthKey, cats, n) {
+      var keys = sortedMonthKeys();
+      var i = keys.indexOf(monthKey);
+      if (i < 0) return { value: 0, months: 0 };
+      var window = keys.slice(Math.max(0, i - n + 1), i + 1);
+      var sum = 0;
+      window.forEach(function(k) { sum += monthCategoryTotal(k, cats); });
+      return { value: window.length ? sum / window.length : 0, months: window.length };
+    }
+
+    function renderBudgets(monthKey) {
+      var keys = sortedMonthKeys();
+      var isCurrent = keys.length && monthKey === keys[keys.length - 1];
+      var partial = isCurrent && lastMonthIsPartial(keys);
+
+      var caveat = partial
+        ? '<div class="chart-note" style="margin:0 0 var(--s4)">' +
+            monthLabel(monthKey) + ' is still in progress, so every figure here is a part-month total.</div>'
+        : '';
+      $('#summaryBudgets').innerHTML = caveat + BUDGETS.map(function(b) {
+        var actual, basis;
+        if (b.method === 'avg3') {
+          var ta = trailingAverage(monthKey, b.categories, 3);
+          actual = ta.value;
+          basis = ta.months + '-month average';
+        } else {
+          actual = monthCategoryTotal(monthKey, b.categories);
+          basis = '';
+        }
+
+        var up = b.better === 'up';
+        // A zero target cannot be a ratio. Any spend against it is simply missed.
+        var pct = b.monthly > 0 ? Math.min(100, (actual / b.monthly) * 100)
+                                : (actual > 0 ? 100 : 0);
+        var missed = up ? (actual < b.monthly - 0.005) : (actual > b.monthly + 0.005);
+        var delta = actual - b.monthly;
+        var deltaTxt = delta === 0 ? 'on target'
+          : fmtMoney(Math.abs(delta)) + (delta > 0 ? ' over' : ' under');
+        if (up && delta > 0) deltaTxt = fmtMoney(delta) + ' ahead';
+        if (up && delta < 0) deltaTxt = fmtMoney(Math.abs(delta)) + ' short';
+
+        // The partial-month caveat is stated ONCE below the section title rather
+        // than repeated on every row, where five copies of it drowned the numbers.
+        var notes = [deltaTxt];
+        if (basis) notes.push(basis);
+        if (b.note) notes.push(b.note);
+
+        return '<div class="card goal-card">' +
+          '<div class="row"><span class="name">' + b.name + '</span>' +
+          '<span class="amounts">' + fmtMoney(actual) + ' / ' + fmtMoney(b.monthly) + '</span></div>' +
+          '<div class="bar-track"><div class="bar-fill ' + (missed ? 'bad' : 'good') +
+            '" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+          '<div class="goal-note">' + notes.join(' \u00b7 ') + '</div>' +
+          '</div>';
+      }).join('');
+    }
+
     function renderSummary(monthKey) {
       var s = computeMonthSummary(monthKey);
       var netClass = s.netCashFlow < 0 ? 'negative' : 'positive';
@@ -1131,6 +1233,7 @@
           '<span class="amt">' + fmtMoney(s.savingsTransfer) + '</span></div>';
 
       $('#summaryCats').innerHTML = catRows(s.categories);
+      renderBudgets(monthKey);
     }
 
     function initSummary() {
