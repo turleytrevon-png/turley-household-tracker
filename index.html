@@ -840,15 +840,27 @@
         parts.push('<div class="row"><span class="name">' + L.name + '</span>' +
           '<span class="amounts">' + fmtMoneyCents(L.currentBalance) + ' left</span></div>');
         parts.push('<div class="bar-track"><div class="bar-fill good" style="width:' + pct + '%"></div></div>');
-        parts.push('<div class="goal-note">' + fmtMoneyCents(L.principalPaid) + ' of ' +
-          fmtMoneyCents(L.originalPrincipal) + ' paid off \u00b7 ' + pct.toFixed(1) + '%</div>');
+        // A card's baseline is where tracking started, NOT an origination amount, so it
+        // must not be described as "of $X paid off" -- that would imply the balance was
+        // once a loan of that size and is being retired. Say what it actually is.
+        if (L.kind === 'card') {
+          parts.push('<div class="goal-note">' + fmtMoneyCents(L.principalPaid) +
+            ' paid down \u00b7 ' + pct.toFixed(1) + '% of the ' + fmtMoneyCents(L.originalPrincipal) +
+            ' starting balance' +
+            (L.utilization !== null ? ' \u00b7 ' + L.utilization + '% of the ' +
+              fmtMoney(L.creditLimit) + ' limit' : '') + '</div>');
+        } else {
+          parts.push('<div class="goal-note">' + fmtMoneyCents(L.principalPaid) + ' of ' +
+            fmtMoneyCents(L.originalPrincipal) + ' paid off \u00b7 ' + pct.toFixed(1) + '%</div>');
+        }
 
         // The split, stated rather than implied.
         if (L.lastPrincipal !== null && L.lastInterest !== null) {
           parts.push('<div class="split">' +
             '<span>Last payment ' + fmtMoneyCents(L.payment) + '</span>' +
             '<span class="sep">=</span>' +
-            '<span class="to-debt">' + fmtMoneyCents(L.lastPrincipal) + ' to the loan</span>' +
+            '<span class="to-debt">' + fmtMoneyCents(L.lastPrincipal) +
+              (L.kind === 'card' ? ' off the balance' : ' to the loan') + '</span>' +
             '<span class="sep">+</span>' +
             '<span class="to-interest">' + fmtMoneyCents(L.lastInterest) + ' interest' +
             (L.lastInterestPct !== null ? ' (' + L.lastInterestPct + '%)' : '') + '</span>' +
