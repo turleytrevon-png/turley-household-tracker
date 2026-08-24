@@ -171,6 +171,22 @@
   .submit-btn:active { transform: scale(0.98); }
   .submit-btn:disabled { opacity: 0.4; }
   .txn-filters { display: flex; flex-direction: column; gap: var(--s3); margin-bottom: var(--s5); }
+  /* Collapsed by default: the three filter rows cost roughly 380px before you
+     reach the list, and most visits to History never touch them. The attribute
+     selector is needed because [hidden] alone loses to display:flex above. */
+  .txn-filters[hidden] { display: none; }
+  .filter-toggle {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    gap: var(--s3); background: var(--panel); border: none; border-radius: var(--r-ctl);
+    padding: 13px var(--s4); color: var(--muted); font-size: 14px; font-weight: 500;
+    letter-spacing: -0.01em; text-align: left; min-height: 48px; margin-bottom: var(--s4);
+  }
+  .filter-toggle .label { min-width: 0; }
+  .filter-toggle .chev { color: var(--faint); flex-shrink: 0; transition: transform 0.18s ease; }
+  .filter-toggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
+  /* Accent when something is actually filtering, so a collapsed panel can never
+     hide the fact that the list is not showing everything. */
+  .filter-toggle.filtered .label { color: var(--accent); }
   .txn-filters .row { display: flex; gap: var(--s3); }
   .txn-filters .row .field { flex: 1; margin: 0; }
   /* Text buttons still need a 44px target even though they carry no fill. */
@@ -274,8 +290,11 @@
 
     <section id="page-transactions" class="page">
       <div class="section-title">Transactions</div>
-      <div id="txnChart"></div>
-      <div class="txn-filters">
+      <button type="button" class="filter-toggle" id="tf-toggle" aria-expanded="false" aria-controls="tf-panel">
+        <span class="label" id="tf-summary">Filters</span>
+        <span class="chev">›</span>
+      </button>
+      <div class="txn-filters" id="tf-panel" hidden>
         <div class="row">
           <div class="field">
             <label for="tf-from">From</label>
@@ -296,6 +315,7 @@
         </div>
         <button type="button" class="txn-clear" id="tf-clear">Clear Filters</button>
       </div>
+      <div id="txnChart"></div>
       <div class="txn-count" id="txnCount"></div>
       <div class="card" id="txnList"><div class="loading">Loading transactions…</div></div>
     </section>
@@ -870,6 +890,34 @@
       $('#tf-month').value = rangeIsOneMonth($('#tf-from').value, $('#tf-to').value) || '';
     }
 
+    // What the collapsed row says. Without this, arriving from a category tap
+    // shows a filtered list with nothing on screen explaining why.
+    function filterSummary() {
+      var parts = [];
+      var cat = $('#tf-category').value;
+      var from = $('#tf-from').value, to = $('#tf-to').value;
+      if (cat) parts.push(cat);
+      var oneMonth = rangeIsOneMonth(from, to);
+      if (oneMonth) parts.push(monthLabel(oneMonth));
+      else if (from && to) parts.push(from + ' to ' + to);
+      else if (from) parts.push('from ' + from);
+      else if (to) parts.push('up to ' + to);
+      return parts.join(' \u00b7 ');
+    }
+
+    function updateFilterSummary() {
+      var s = filterSummary();
+      $('#tf-summary').textContent = s || 'Filters';
+      $('#tf-toggle').classList.toggle('filtered', !!s);
+    }
+
+    $('#tf-toggle').addEventListener('click', function() {
+      var panel = $('#tf-panel');
+      var open = panel.hasAttribute('hidden');
+      if (open) panel.removeAttribute('hidden'); else panel.setAttribute('hidden', '');
+      $('#tf-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
     function applyTxnFilters() {
       var from = $('#tf-from').value;
       var to = $('#tf-to').value;
@@ -882,6 +930,7 @@
       });
       renderTransactionList(filtered);
       renderTxnChart(filtered);
+      updateFilterSummary();
     }
 
     function loadTransactions() {
