@@ -56,9 +56,11 @@
   #app { display: none; flex-direction: column; height: 100vh; }
   #app.ready { display: flex; }
 
-  header { padding: var(--s6) var(--s5) var(--s4); max-width: 600px; margin: 0 auto; width: 100%; }
-  header h1 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.025em; }
-  header p { margin: 6px 0 0; color: var(--faint); font-size: 12px; letter-spacing: -0.005em; }
+  /* No title. The app is the only thing on screen, so a name across the top was
+     ~60px of vertical space spent restating what the user already knew. The refresh
+     stamp is the one piece of actual data that lived up here, so it is what stays. */
+  header { padding: var(--s4) var(--s5) var(--s2); max-width: 600px; margin: 0 auto; width: 100%; }
+  header p { margin: 0; color: var(--faint); font-size: 12px; letter-spacing: -0.005em; }
   main { flex: 1; overflow-y: auto; padding: 0 var(--s5) 132px; -webkit-overflow-scrolling: touch; max-width: 600px; margin: 0 auto; width: 100%; }
   .page { display: none; }
   .page.active { display: block; }
@@ -154,18 +156,10 @@
   .bar-seg { cursor: pointer; }
 
   /* --- Controls ----------------------------------------------------------- */
-  /* Pill segmented control. The old one filled the selected tab with solid accent,
-     which shouted louder than the submit button underneath it. */
-  .segmented { display: flex; background: var(--panel); border-radius: var(--r-pill); padding: 4px; gap: 2px; }
-  /* 13px vertical, not 9px: these are the primary controls on a phone and need to
-     clear a ~44px touch target, which 9px padding did not. */
-  .segmented button { flex: 1; padding: 13px var(--s3); border: none; background: transparent; color: var(--muted); border-radius: var(--r-pill); font-size: 14px; font-weight: 500; letter-spacing: -0.01em; transition: background 0.18s ease, color 0.18s ease; }
-  .segmented button.active { background: var(--panel-2); color: var(--text); font-weight: 600; }
   .seg { display: flex; gap: var(--s2); margin: var(--s2) 0 var(--s5); }
   .seg button { padding: 13px var(--s5); border: none; background: var(--panel); color: var(--muted); border-radius: var(--r-pill); font-size: 14px; font-weight: 500; letter-spacing: -0.01em; transition: background 0.18s ease, color 0.18s ease; }
   .seg button.active { background: var(--text); color: var(--bg); font-weight: 600; }
 
-  form { display: flex; flex-direction: column; gap: var(--s5); padding-top: var(--s2); }
   .field label { display: block; font-size: 12px; color: var(--faint); margin-bottom: var(--s2); font-weight: 500; }
   .field input, .month-select, .txn-filters select {
     width: 100%; padding: 14px var(--s4); border-radius: var(--r-ctl);
@@ -175,9 +169,6 @@
   .field input::placeholder { color: var(--faint); }
   .field input:focus, .month-select:focus, .txn-filters select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .month-select { margin-bottom: var(--s5); font-weight: 600; }
-  .submit-btn { padding: 17px; border-radius: var(--r-pill); border: none; background: var(--accent); color: #06101f; font-weight: 600; font-size: 16px; letter-spacing: -0.01em; transition: transform 0.12s ease, opacity 0.15s ease; }
-  .submit-btn:active { transform: scale(0.98); }
-  .submit-btn:disabled { opacity: 0.4; }
   .txn-filters { display: flex; flex-direction: column; gap: var(--s3); margin-bottom: var(--s5); }
   /* Collapsed by default: the three filter rows cost roughly 380px before you
      reach the list, and most visits to History never touch them. The attribute
@@ -198,16 +189,18 @@
   .txn-filters .row { display: flex; gap: var(--s3); }
   .txn-filters .row .field { flex: 1; margin: 0; }
   /* Text buttons still need a 44px target even though they carry no fill. */
-  .txn-clear, .ghost-btn { background: none; border: none; color: var(--accent); font-weight: 500; letter-spacing: -0.01em; display: inline-flex; align-items: center; min-height: 44px; padding: 0; align-self: flex-start; }
+  .txn-clear { background: none; border: none; color: var(--accent); font-weight: 500; letter-spacing: -0.01em; display: inline-flex; align-items: center; min-height: 44px; padding: 0; align-self: flex-start; }
   .txn-clear { font-size: 14px; }
-  .ghost-btn { font-size: 15px; }
 
   /* --- Floating layers ---------------------------------------------------- */
   .toast { position: fixed; bottom: 116px; left: var(--s5); right: var(--s5); max-width: 540px; margin: 0 auto; background: var(--panel-2); border-radius: var(--r-ctl); padding: 14px var(--s4); text-align: center; font-size: 14px; box-shadow: var(--float); display: none; z-index: 20; }
   .toast.show { display: block; }
   .toast.error { color: var(--neg); }
   .toast.ok { color: var(--pos); }
-  .chart-tooltip { position: fixed; pointer-events: none; background: var(--panel-2); color: var(--text); font-size: 12px; font-weight: 500; padding: var(--s2) var(--s3); border-radius: var(--r-ctl); box-shadow: var(--float); white-space: nowrap; display: none; z-index: 50; }
+  /* colour is set per-bar from JS -- it is what tells you which series you are
+     reading now that the series name is no longer spelled out. 600 not 500: a
+     coloured 12px string on a dark panel needs the weight to stay crisp. */
+  .chart-tooltip { position: fixed; pointer-events: none; background: var(--panel-2); color: var(--text); font-size: 12px; font-weight: 600; padding: var(--s2) var(--s3); border-radius: var(--r-ctl); box-shadow: var(--float); white-space: nowrap; display: none; z-index: 50; }
   .chart-tooltip.show { display: block; }
 
   /* --- Navigation --------------------------------------------------------- */
@@ -218,12 +211,6 @@
   nav button .icon { display: flex; }
   nav button .icon svg { width: 23px; height: 23px; }
   nav button.active { color: var(--text); }
-
-  .fab { position: fixed; right: var(--s5); bottom: calc(84px + env(safe-area-inset-bottom)); width: 54px; height: 54px; border-radius: var(--r-pill); border: none; background: var(--accent); color: #06101f; box-shadow: var(--float); display: flex; align-items: center; justify-content: center; z-index: 16; transition: transform 0.12s ease; }
-  .fab:active { transform: scale(0.94); }
-  .fab svg { width: 26px; height: 26px; }
-  .fab.hidden { display: none; }
-  @media (min-width: 640px) { .fab { right: calc(50vw - 300px + var(--s5)); } }
 
   .loading { text-align: center; color: var(--faint); padding: var(--s7) 0; animation: pulse 1.5s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
@@ -252,7 +239,6 @@
 
 <div id="app">
   <header>
-    <h1>Turley Household</h1>
     <p id="lastUpdated">Loading…</p>
   </header>
   <main>
@@ -327,58 +313,10 @@
       <div class="txn-count" id="txnCount"></div>
       <div class="card" id="txnList"><div class="loading">Loading transactions…</div></div>
     </section>
-
-    <!-- Reached from the floating button, not the tab bar. -->
-    <section id="page-add" class="page">
-      <button type="button" class="ghost-btn" id="addCancel">Cancel</button>
-      <form id="quickAddForm">
-        <div class="segmented" id="accountToggle">
-          <button type="button" data-value="checking" class="active">Checking</button>
-          <button type="button" data-value="credit">Credit Card</button>
-        </div>
-
-        <div class="field">
-          <label for="f-date">Date</label>
-          <input type="date" id="f-date" required>
-        </div>
-
-        <div class="field">
-          <label for="f-merchant">Merchant / Description</label>
-          <input type="text" id="f-merchant" placeholder="e.g. Trader Joe's" required>
-        </div>
-
-        <div class="field">
-          <label for="f-category">Category</label>
-          <input type="text" id="f-category" list="category-list" placeholder="Start typing…" required>
-          <datalist id="category-list"></datalist>
-        </div>
-
-        <div class="field">
-          <label for="f-amount">Amount ($)</label>
-          <input type="number" id="f-amount" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" required>
-        </div>
-
-        <div class="field">
-          <label>Flow</label>
-          <div class="segmented" id="flowToggle">
-            <button type="button" data-value="Outflow" class="active">Money out</button>
-            <button type="button" data-value="Inflow">Money in</button>
-          </div>
-          <div class="goal-note" id="flowHint">Enter the amount as a positive number — this switch sets the sign.</div>
-        </div>
-
-        <button type="submit" class="submit-btn" id="submitBtn">Add Transaction</button>
-      </form>
-    </section>
   </main>
 
   <div class="toast" id="toast"></div>
   <div class="chart-tooltip" id="chartTooltip"></div>
-
-  <button class="fab" id="fab" type="button" aria-label="Add a transaction">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-  </button>
-
   <nav>
     <button class="nav-btn active" data-page="dashboard"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5l9-6.5 9 6.5"/><path d="M5 10.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9.5"/></svg></span>Home</button>
     <button class="nav-btn" data-page="spending"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="21" x2="5" y2="13"/><line x1="12" y1="21" x2="12" y2="4"/><line x1="19" y1="21" x2="19" y2="9"/></svg></span>Spending</button>
@@ -420,15 +358,6 @@
     }
     return fetch(API_URL + '?' + qs).then(function(r) { return r.json(); });
   }
-
-  function apiPost(entry) {
-    var pass = localStorage.getItem(PASS_KEY);
-    return fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({ pass: pass, entry: entry })
-    }).then(function(r) { return r.json(); });
-  }
-
   // --- Passphrase gate ---
   function showGate(errorMsg) {
     $('#gate').classList.remove('hidden');
@@ -501,6 +430,10 @@
 
   function buildBarChart(labels, series, opts) {
     opts = opts || {};
+    // opts.tipLabels lets a chart put one thing on the axis and another in the
+    // tooltip. The daily History chart needs it: the axis has room for "3", but a
+    // tooltip reading "3 - $45" does not say what the 3 is, so it gets "Jul 3".
+    var tipLabels = opts.tipLabels || labels;
     var W = 340, H = opts.height || 180;
     var padL = 42, padT = 10, padB = 22, padR = 6;
     var plotW = W - padL - padR, plotH = H - padT - padB;
@@ -533,7 +466,8 @@
           var v = s.values[i] || 0;
           var y0 = y(acc), y1 = y(acc + v);
           acc += v;
-          parts.push('<rect class="bar-seg" data-label="' + s.name + '" data-month="' + lab + '" data-value="' + v +
+          parts.push('<rect class="bar-seg" data-label="' + attrEscape(s.name) + '" data-tip="' + attrEscape(tipLabels[i]) +
+            '" data-value="' + v + '" data-color="' + s.color +
             '" x="' + (gx + groupW * 0.22).toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) +
             '" width="' + (groupW * 0.56).toFixed(1) + '" height="' + Math.max(Math.abs(y1 - y0), 0.5).toFixed(1) +
             '" fill="' + s.color + '" rx="3"/>');
@@ -544,7 +478,8 @@
           var v = s.values[i] || 0;
           var y1 = y(v);
           var fill = typeof s.color === 'function' ? s.color(v) : s.color;
-          parts.push('<rect class="bar-seg" data-label="' + s.name + '" data-month="' + lab + '" data-value="' + v +
+          parts.push('<rect class="bar-seg" data-label="' + attrEscape(s.name) + '" data-tip="' + attrEscape(tipLabels[i]) +
+            '" data-value="' + v + '" data-color="' + fill +
             '" x="' + (gx + groupW * 0.18 + bw * si).toFixed(1) + '" y="' + Math.min(zeroY, y1).toFixed(1) +
             '" width="' + bw.toFixed(1) + '" height="' + Math.max(Math.abs(y1 - zeroY), 0.5).toFixed(1) +
             '" fill="' + fill + '" rx="3"/>');
@@ -636,22 +571,16 @@
 
   // --- App ---
   function initApp() {
-    // 'add' has no tab of its own — it is reached from the floating button — so
-    // no nav item lights up for it and the button itself gets out of the way.
     function switchToPage(pageName) {
       $all('.nav-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.page === pageName); });
       $all('.page').forEach(function(p) { p.classList.toggle('active', p.id === 'page-' + pageName); });
-      $('#fab').classList.toggle('hidden', pageName === 'add');
       $('main').scrollTop = 0;
+      hideChartTooltip();
     }
 
     $all('.nav-btn').forEach(function(btn) {
       btn.addEventListener('click', function() { switchToPage(btn.dataset.page); });
     });
-
-    $('#fab').addEventListener('click', function() { switchToPage('add'); });
-    $('#addCancel').addEventListener('click', function() { switchToPage('dashboard'); });
-
     // Month / Over time within Spending.
     $all('#spendView button').forEach(function(btn) {
       btn.addEventListener('click', function() {
@@ -662,44 +591,69 @@
       });
     });
 
-    function wireSegmented(id) {
-      $all('#' + id + ' button').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          $all('#' + id + ' button').forEach(function(b) { b.classList.remove('active'); });
-          btn.classList.add('active');
-        });
-      });
-    }
-    ['accountToggle', 'flowToggle'].forEach(wireSegmented);
 
     // Hover tooltip for the hand-rolled SVG bar charts. Delegated on the
-    // (static) trends page rather than the (re-rendered) chart container, so
-    // it keeps working across every renderTrends() call.
+    // (static) pages rather than the (re-rendered) chart containers, so it keeps
+    // working across every re-render. ONE implementation for both pages -- these
+    // were two copies of the same six lines and had already drifted apart (one
+    // spelled the separator '\u00b7', the other used a literal middle dot).
     var chartTooltip = $('#chartTooltip');
-    function hideChartTooltip() { chartTooltip.classList.remove('show'); }
-    $('#page-spending').addEventListener('mousemove', function(e) {
-      var seg = e.target.closest && e.target.closest('.bar-seg');
-      if (!seg) { hideChartTooltip(); return; }
-      chartTooltip.textContent = seg.dataset.month + ' · ' + seg.dataset.label + ': ' + fmtMoney(seg.dataset.value);
-      chartTooltip.style.left = (e.clientX + 14) + 'px';
-      chartTooltip.style.top = (e.clientY + 14) + 'px';
-      chartTooltip.classList.add('show');
-    });
-    $('#page-spending').addEventListener('mouseleave', hideChartTooltip);
-    $('#page-transactions').addEventListener('mousemove', function(e) {
-      var seg = e.target.closest && e.target.closest('.bar-seg');
-      if (!seg) { hideChartTooltip(); return; }
-      chartTooltip.textContent = seg.dataset.month + ' \u00b7 ' + seg.dataset.label + ': ' + fmtMoney(seg.dataset.value);
-      chartTooltip.style.left = (e.clientX + 14) + 'px';
-      chartTooltip.style.top = (e.clientY + 14) + 'px';
-      chartTooltip.classList.add('show');
-    });
-    $('#page-transactions').addEventListener('mouseleave', hideChartTooltip);
+    // Null-guarded because switchToPage() is declared above the line that assigns
+    // chartTooltip, and calls hideChartTooltip.
+    function hideChartTooltip() { if (chartTooltip) chartTooltip.classList.remove('show'); }
 
-    function activeValue(id) {
-      var btn = document.querySelector('#' + id + ' button.active');
-      return btn ? btn.dataset.value : null;
+    // The series name is deliberately NOT in the text. Every chart with a tooltip
+    // either carries a legend or has one series named by the chart's own title,
+    // so the name restated something already on screen -- and it was most of the
+    // width that pushed right-hand-edge tooltips off the viewport. The bar's own
+    // colour identifies the series instead.
+    function showChartTooltip(e, seg) {
+      chartTooltip.textContent = seg.dataset.tip + ' \u00b7 ' + fmtMoney(seg.dataset.value);
+      chartTooltip.style.color = seg.dataset.color || '';
+
+      // Measure only AFTER the text is set and the box is shown -- while it is
+      // display:none the rect is 0x0 and every clamp below silently does nothing.
+      chartTooltip.classList.add('show');
+      var box = chartTooltip.getBoundingClientRect();
+      var vw = document.documentElement.clientWidth;
+      var vh = document.documentElement.clientHeight;
+      var gap = 14, edge = 8;
+
+      // Bars on the right-hand edge used to run off screen: the tooltip was pinned
+      // to the cursor's right with no bound at all. Prefer the right, flip to the
+      // left when that would overflow, then clamp -- the clamp is what rescues a
+      // tooltip too wide for the space on either side.
+      var left = e.clientX + gap;
+      if (left + box.width > vw - edge) left = e.clientX - gap - box.width;
+      left = Math.max(edge, Math.min(left, vw - edge - box.width));
+
+      var top = e.clientY + gap;
+      if (top + box.height > vh - edge) top = e.clientY - gap - box.height;
+      top = Math.max(edge, Math.min(top, vh - edge - box.height));
+
+      chartTooltip.style.left = left + 'px';
+      chartTooltip.style.top = top + 'px';
     }
+
+    ['#page-spending', '#page-transactions'].forEach(function(sel) {
+      var host = $(sel);
+      host.addEventListener('mousemove', function(e) {
+        var seg = e.target.closest && e.target.closest('.bar-seg');
+        if (!seg) { hideChartTooltip(); return; }
+        showChartTooltip(e, seg);
+      });
+      host.addEventListener('mouseleave', hideChartTooltip);
+    });
+
+    // mouseleave never fires from touch input, so on a phone the tooltip had no way
+    // to close: it sat there over whatever you looked at next. touchstart fires
+    // BEFORE the synthetic mousemove iOS sends afterwards, so tapping a bar still
+    // shows its tooltip -- this only kills the stale one. Bound on document, not on
+    // the two chart pages, because the taps that used to leave it stranded (the nav
+    // bar, the header) are outside them. Scrolling dismisses it too: the tooltip is
+    // position:fixed, so it would otherwise hang in place while its bar slid away.
+    document.addEventListener('touchstart', hideChartTooltip, { passive: true });
+    $('main').addEventListener('scroll', hideChartTooltip, { passive: true });
 
     function showToast(message, isError) {
       var toast = $('#toast');
@@ -787,7 +741,6 @@
 
     apiGet('categories').then(function(categories) {
       if (categories.error) return;
-      $('#category-list').innerHTML = categories.map(function(c) { return '<option value="' + c + '">'; }).join('');
       $('#tf-category').innerHTML = '<option value="">All Categories</option>' +
         categories.map(function(c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
     });
@@ -881,7 +834,8 @@
 
       host.innerHTML = chartCard(title, note,
         buildBarChart(d.labels, [{ name: category, color: SPARK_COLOR, values: d.values }],
-          { height: 190, labelEvery: d.labels.length > 20 ? 5 : (d.labels.length > 8 ? 2 : 1) })) +
+          { height: 190, labelEvery: d.labels.length > 20 ? 5 : (d.labels.length > 8 ? 2 : 1),
+            tipLabels: oneMonth ? d.labels.map(function(day) { return shortMonth(oneMonth) + ' ' + day; }) : null })) +
         '<div class="txn-count">' + fmtMoney(d.total) + ' total across ' + d.count +
           (d.count === 1 ? ' outflow' : ' outflows') + '</div>';
     }
@@ -1408,49 +1362,6 @@
     });
 
     loadTransactions();
-
-    $('#f-date').value = new Date().toISOString().slice(0, 10);
-
-    $('#f-merchant').addEventListener('blur', function() {
-      var merchant = $('#f-merchant').value.trim();
-      if (!merchant || $('#f-category').value.trim()) return;
-      apiGet('suggestCategory', { merchant: merchant }).then(function(data) {
-        if (data.category) $('#f-category').value = data.category;
-      });
-    });
-
-    $('#quickAddForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      var entry = {
-        account: activeValue('accountToggle'),
-        date: $('#f-date').value,
-        merchant: $('#f-merchant').value.trim(),
-        category: $('#f-category').value.trim(),
-        amount: $('#f-amount').value,
-        flow: activeValue('flowToggle')
-      };
-      $('#submitBtn').disabled = true;
-      $('#submitBtn').textContent = 'Adding…';
-      apiPost(entry).then(function(result) {
-        $('#submitBtn').disabled = false;
-        $('#submitBtn').textContent = 'Add Transaction';
-        if (result.success) {
-          showToast('Transaction added', false);
-          $('#quickAddForm').reset();
-          $all('#flowToggle button').forEach(function(b, i) { b.classList.toggle('active', i === 0); });
-          $all('#accountToggle button').forEach(function(b, i) { b.classList.toggle('active', i === 0); });
-          $('#f-date').value = new Date().toISOString().slice(0, 10);
-          loadData();
-          loadTransactions();
-        } else {
-          showToast(result.error, true);
-        }
-      }).catch(function(err) {
-        $('#submitBtn').disabled = false;
-        $('#submitBtn').textContent = 'Add Transaction';
-        showToast('Error: ' + err, true);
-      });
-    });
 
     loadData();
   }
