@@ -1186,7 +1186,13 @@
       'Auto Loan Payment': true,
       'Credit Line Payment': true,
       'Card Payment': true,
-      'Income': true
+      'Income': true,
+      // Paying down card 9044. Excluded from spend for the same reason as the auto loan:
+      // it retires principal, it consumes nothing. 'Card Interest' is deliberately NOT
+      // here -- interest IS consumption, and excluding it would hide $870/year of real
+      // cost. Splitting them is also what prevents double-counting: the payment is
+      // excluded, the interest is counted, and together they ARE the payment.
+      'Card Debt Paydown': true
     };
 
     function monthLabel(key) {
@@ -1203,7 +1209,7 @@
       // The Checking/Credit KPI tiles keep the split — they are one total shown
       // two ways, not a duplicated list — so both are still summed here.
       var catTotals = {};
-      var income = 0, ccPayments = 0, autoLoan = 0, creditLine = 0, savingsTransfer = 0;
+      var income = 0, ccPayments = 0, autoLoan = 0, creditLine = 0, savingsTransfer = 0, cardPaydown = 0;
       var checkingSpend = 0, creditSpend = 0;
 
       allTransactions.forEach(function(t) {
@@ -1215,6 +1221,10 @@
           if (t.category === 'Auto Loan Payment') { autoLoan += spend; return; }
           if (t.category === 'Credit Line Payment') { creditLine += spend; return; }
           if (t.category === 'Internal Savings Transfer') { savingsTransfer += spend; return; }
+          // Real debt leaving the household, unlike a payment to an active card. Returns
+          // early like the other debt categories, so it stays out of checkingSpend and out
+          // of the Spending-by-category rollup -- consistent with 'Auto Loan Payment'.
+          if (t.category === 'Card Debt Paydown') { cardPaydown += spend; return; }
           checkingSpend += spend;
         } else {
           // The credit leg of a card payment. Without this guard, paying the
@@ -1233,8 +1243,11 @@
       // paydown — that spending was already counted the day it happened. Debt
       // paydown is the auto loan plus the L0074 credit line. Net cash flow counts credit
       // spending when it HAPPENS rather than when the card gets paid.
-      var debtPaydown = autoLoan + creditLine;
-      var netCashFlow = income - checkingSpend - creditSpend - autoLoan - creditLine - savingsTransfer;
+      // Card 9044's paydown IS debt paydown -- its spending was never tracked here, so
+      // retiring the balance is money genuinely leaving the household, not a transfer.
+      var debtPaydown = autoLoan + creditLine + cardPaydown;
+      var netCashFlow = income - checkingSpend - creditSpend - autoLoan - creditLine -
+                        savingsTransfer - cardPaydown;
 
       return {
         income: income, checkingSpend: checkingSpend, creditSpend: creditSpend,
