@@ -1469,10 +1469,14 @@
     // Everyone the data can actually attribute a row to. 'Unassigned' is not a
     // person, so it is excluded — which is why the filter stays hidden until a
     // card has actually been recorded on a row.
+    // 'Joint' is an attribution, not a person, so it is deliberately kept OUT of the
+    // per-person filter: the budgets it drives are "$250 each", and Joint has no share
+    // of a per-person target. It still counts as ATTRIBUTED though -- that is the whole
+    // point of separating it from 'Unassigned', which means nobody has decided yet.
     function peopleInData() {
       var seen = {};
       allTransactions.forEach(function(t) {
-        if (t.person && t.person !== 'Unassigned') seen[t.person] = true;
+        if (t.person && t.person !== 'Unassigned' && t.person !== 'Joint') seen[t.person] = true;
       });
       return Object.keys(seen).sort();
     }
