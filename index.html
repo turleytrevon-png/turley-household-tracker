@@ -844,11 +844,21 @@
         // must not be described as "of $X paid off" -- that would imply the balance was
         // once a loan of that size and is being retired. Say what it actually is.
         if (L.kind === 'card') {
+          // When the baseline IS the credit limit -- Trevon's choice, 2026-08-24 -- the
+          // bar and the utilisation figure are exact complements: 6.6% cleared and 93.4%
+          // used always sum to 100. Printing both states one fact twice in opposite
+          // directions, which reads like a contradiction. So show utilisation only when
+          // it is telling you something the bar is not.
+          var sameFact = L.creditLimit && Math.abs(L.originalPrincipal - L.creditLimit) < 0.005;
           parts.push('<div class="goal-note">' + fmtMoneyCents(L.principalPaid) +
-            ' paid down \u00b7 ' + pct.toFixed(1) + '% of the ' + fmtMoneyCents(L.originalPrincipal) +
-            ' starting balance' +
-            (L.utilization !== null ? ' \u00b7 ' + L.utilization + '% of the ' +
+            ' cleared \u00b7 ' + pct.toFixed(1) + '% of the ' + fmtMoney(L.originalPrincipal) +
+            (sameFact ? ' credit line' : ' starting balance') +
+            (!sameFact && L.utilization !== null ? ' \u00b7 ' + L.utilization + '% of the ' +
               fmtMoney(L.creditLimit) + ' limit' : '') + '</div>');
+          if (sameFact) {
+            parts.push('<div class="payoff-note">' + fmtMoneyCents(L.currentBalance) +
+              ' still owed \u00b7 ' + L.utilization + '% of the line in use</div>');
+          }
         } else {
           parts.push('<div class="goal-note">' + fmtMoneyCents(L.principalPaid) + ' of ' +
             fmtMoneyCents(L.originalPrincipal) + ' paid off \u00b7 ' + pct.toFixed(1) + '%</div>');
