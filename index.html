@@ -265,6 +265,7 @@
 
     <section id="page-transactions" class="page">
       <div class="section-title">Transactions</div>
+      <div id="txnChart"></div>
       <div class="txn-filters">
         <div class="row">
           <div class="field">
@@ -275,6 +276,10 @@
             <label for="tf-to">To</label>
             <input type="date" id="tf-to">
           </div>
+        </div>
+        <div class="field">
+          <label for="tf-month">Month</label>
+          <select id="tf-month"><option value="">Year to date</option></select>
         </div>
         <div class="field">
           <label for="tf-category">Category</label>
@@ -512,7 +517,7 @@
 
     parts.push('<line x1="' + padL + '" y1="' + zeroY.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + zeroY.toFixed(1) +
       '" stroke="' + ZERO_LINE + '" stroke-width="1"/>');
-    parts.push(xLabels(labels, padL, plotW, H, labels.length > 8 ? 2 : 1));
+    parts.push(xLabels(labels, padL, plotW, H, opts.labelEvery || (labels.length > 8 ? 2 : 1)));
 
     return svgWrap(W, H, parts);
   }
@@ -644,6 +649,15 @@
       chartTooltip.classList.add('show');
     });
     $('#page-spending').addEventListener('mouseleave', hideChartTooltip);
+    $('#page-transactions').addEventListener('mousemove', function(e) {
+      var seg = e.target.closest && e.target.closest('.bar-seg');
+      if (!seg) { hideChartTooltip(); return; }
+      chartTooltip.textContent = seg.dataset.month + ' \u00b7 ' + seg.dataset.label + ': ' + fmtMoney(seg.dataset.value);
+      chartTooltip.style.left = (e.clientX + 14) + 'px';
+      chartTooltip.style.top = (e.clientY + 14) + 'px';
+      chartTooltip.classList.add('show');
+    });
+    $('#page-transactions').addEventListener('mouseleave', hideChartTooltip);
 
     function activeValue(id) {
       var btn = document.querySelector('#' + id + ' button.active');
@@ -743,6 +757,91 @@
         : '<div class="loading">No transactions match these filters.</div>';
     }
 
+    // --- Category detail chart (History) ----------------------------------
+    // A Top Variable Categories row now lands here, so the big version of that
+    // sparkline has to live on this page. It draws only for a SINGLE category:
+    // across "All Categories" the bars would just be the household total, which
+    // the Spending tab already draws better.
+    function ytdStart() { return new Date().getFullYear() + '-01-01'; }
+
+    // '' unless the range is exactly one whole calendar month, in which case the
+    // month key. Granularity hangs off this: a one-bar chart says nothing, and
+    // the day pattern inside a month is the thing the year view cannot show.
+    function rangeIsOneMonth(from, to) {
+      if (!from || !to) return '';
+      if (from.slice(0, 7) !== to.slice(0, 7)) return '';
+      var key = from.slice(0, 7);
+      var lastDay = new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)), 0).getDate();
+      var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+      if (from.slice(8, 10) !== '01' || to.slice(8, 10) !== pad(lastDay)) return '';
+      return key;
+    }
+
+    function txnChartData(list, oneMonth) {
+      // Outflows only, matching the sparkline this is the big version of. A
+      // refund still shows in the list below, so bars and list can disagree by
+      // the refund amount — stated in the note rather than silently netted,
+      // because netting here would make the two charts contradict each other.
+      var spend = list.filter(function(t) { return Number(t.amount) < 0; });
+      // In daily mode, confine to the charted month here rather than trusting the
+      // caller to have filtered already — otherwise July 3rd's spend lands on
+      // August 3rd's bar, which is exactly the kind of wrong that looks right.
+      if (oneMonth) spend = spend.filter(function(t) { return t.date.slice(0, 7) === oneMonth; });
+      var labels = [], values = [], keys = [];
+      if (oneMonth) {
+        var days = new Date(Number(oneMonth.slice(0, 4)), Number(oneMonth.slice(5, 7)), 0).getDate();
+        var byDay = {};
+        spend.forEach(function(t) { var d = Number(t.date.slice(8, 10)); byDay[d] = (byDay[d] || 0) + (-t.amount); });
+        for (var d = 1; d <= days; d++) { labels.push(String(d)); values.push(byDay[d] || 0); }
+      } else {
+        var byMonth = {};
+        spend.forEach(function(t) { var k = t.date.slice(0, 7); byMonth[k] = (byMonth[k] || 0) + (-t.amount); });
+        keys = Object.keys(byMonth).sort();
+        keys.forEach(function(k) { labels.push(shortMonth(k)); values.push(byMonth[k]); });
+      }
+      return { labels: labels, values: values, keys: keys, count: spend.length,
+               total: values.reduce(function(a, b) { return a + b; }, 0) };
+    }
+
+    function renderTxnChart(list) {
+      var host = $('#txnChart');
+      var category = $('#tf-category').value;
+      if (!category) { host.innerHTML = ''; return; }
+
+      var oneMonth = rangeIsOneMonth($('#tf-from').value, $('#tf-to').value);
+      var d = txnChartData(list, oneMonth);
+      if (!d.count) { host.innerHTML = ''; return; }
+
+      var refunds = 'Outflows only \u2014 a refund shows in the list below but not in the bars.';
+      var title, note;
+      if (oneMonth) {
+        title = category + ' \u00b7 ' + monthLabel(oneMonth);
+        note = 'One bar per day. ' + refunds;
+      } else {
+        title = category;
+        note = (d.keys.length ? monthLabel(d.keys[0]) + ' \u2192 ' + monthLabel(d.keys[d.keys.length - 1]) + '. ' : '') +
+          'One bar per month. ' + refunds;
+      }
+
+      host.innerHTML = chartCard(title, note,
+        buildBarChart(d.labels, [{ name: category, color: SPARK_COLOR, values: d.values }],
+          { height: 190, labelEvery: d.labels.length > 20 ? 5 : (d.labels.length > 8 ? 2 : 1) })) +
+        '<div class="txn-count">' + fmtMoney(d.total) + ' total across ' + d.count +
+          (d.count === 1 ? ' outflow' : ' outflows') + '</div>';
+    }
+
+    // The Month control writes into From/To rather than standing beside them as a
+    // second date filter, so the chart and the list can never disagree.
+    function initTxnMonths() {
+      var keys = sortedMonthKeys().reverse();
+      $('#tf-month').innerHTML = '<option value="">Year to date</option>' +
+        keys.map(function(k) { return '<option value="' + k + '">' + monthLabel(k) + '</option>'; }).join('');
+    }
+
+    function syncMonthSelect() {
+      $('#tf-month').value = rangeIsOneMonth($('#tf-from').value, $('#tf-to').value) || '';
+    }
+
     function applyTxnFilters() {
       var from = $('#tf-from').value;
       var to = $('#tf-to').value;
@@ -754,12 +853,14 @@
         return true;
       });
       renderTransactionList(filtered);
+      renderTxnChart(filtered);
     }
 
     function loadTransactions() {
       apiGet('transactions').then(function(data) {
         if (data.error) { $('#txnList').innerHTML = '<div class="loading">' + data.error + '</div>'; return; }
         allTransactions = data;
+        initTxnMonths();
         applyTxnFilters();
         initSummary();
         renderTrends();
@@ -876,7 +977,8 @@
       allTransactions.forEach(function(t) {
         if (t.amount >= 0) return;
         if (t.category === 'Internal Savings Transfer' || t.category === 'Credit Card Payments' ||
-            t.category === 'Auto Loan Payment' || t.category === 'Card Payment') return;
+            t.category === 'Auto Loan Payment' || t.category === 'Credit Line Payment' ||
+            t.category === 'Card Payment') return;
         if (FIXED_COSTS[t.category]) return;
         totals[t.category] = (totals[t.category] || 0) + (-t.amount);
       });
@@ -974,6 +1076,7 @@
       $('#tf-from').value = range.from;
       $('#tf-to').value = range.to;
       $('#tf-category').value = category;
+      syncMonthSelect();
       applyTxnFilters();
       switchToPage('transactions');
     }
@@ -993,8 +1096,9 @@
       var row = e.target.closest && e.target.closest('.spark-row');
       if (!row) return;
       ensureCategoryOption(row.dataset.category);
-      $('#tf-from').value = '';
+      $('#tf-from').value = ytdStart();
       $('#tf-to').value = '';
+      $('#tf-month').value = '';
       $('#tf-category').value = row.dataset.category;
       applyTxnFilters();
       switchToPage('transactions');
@@ -1042,12 +1146,26 @@
       renderSummary(monthKeys[0]);
     }
 
-    ['tf-from', 'tf-to', 'tf-category'].forEach(function(id) {
-      $('#' + id).addEventListener('change', applyTxnFilters);
+    ['tf-from', 'tf-to'].forEach(function(id) {
+      $('#' + id).addEventListener('change', function() { syncMonthSelect(); applyTxnFilters(); });
+    });
+    $('#tf-category').addEventListener('change', applyTxnFilters);
+    $('#tf-month').addEventListener('change', function() {
+      var k = $('#tf-month').value;
+      if (k) {
+        var r = monthDateRange(k);
+        $('#tf-from').value = r.from;
+        $('#tf-to').value = r.to;
+      } else {
+        $('#tf-from').value = ytdStart();
+        $('#tf-to').value = '';
+      }
+      applyTxnFilters();
     });
     $('#tf-clear').addEventListener('click', function() {
       $('#tf-from').value = '';
       $('#tf-to').value = '';
+      $('#tf-month').value = '';
       $('#tf-category').value = '';
       applyTxnFilters();
     });
