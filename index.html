@@ -634,7 +634,26 @@
       // sub-views -- a category row from This month, a sparkline row from Over time --
       // so restoring the page alone would land him on the wrong half of the tab.
       var seg = document.querySelector('#spendView button.active');
-      drillOrigin = { page: page, seg: seg ? seg.dataset.value : null };
+      seg = seg ? seg.dataset.value : null;
+
+      // NEVER record the destination as the origin. Both drill-down handlers are
+      // DELEGATED on #page-spending, and the row that was tapped stays in the DOM
+      // after the jump -- so a second click event on that same row re-fires the
+      // handler with History already active, and the button then reads "Back to
+      // History" and goes nowhere.
+      //
+      // On iOS that second event is routine, not exotic: a tap fires touchend and
+      // then a synthetic click roughly 300ms later, so one finger tap can run the
+      // handler twice with a page switch in between. A single synthetic click in a
+      // desktop test never reproduces it, which is why this shipped.
+      //
+      // Keep whatever origin we already had and fall back to Spending -- the only
+      // page either drill-down can legitimately start from.
+      if (page === 'transactions' || !page) {
+        page = (drillOrigin && drillOrigin.page) || 'spending';
+        seg = (drillOrigin && drillOrigin.seg) || seg;
+      }
+      drillOrigin = { page: page, seg: seg };
       var navBtn = document.querySelector('.nav-btn[data-page="' + page + '"]');
       var back = $('#tf-back');
       back.textContent = '\u2039 Back to ' + (navBtn ? navBtn.textContent.trim() : page);
