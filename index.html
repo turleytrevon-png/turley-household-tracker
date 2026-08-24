@@ -189,8 +189,15 @@
   .txn-filters .row { display: flex; gap: var(--s3); }
   .txn-filters .row .field { flex: 1; margin: 0; }
   /* Text buttons still need a 44px target even though they carry no fill. */
-  .txn-clear { background: none; border: none; color: var(--accent); font-weight: 500; letter-spacing: -0.01em; display: inline-flex; align-items: center; min-height: 44px; padding: 0; align-self: flex-start; }
+  .txn-clear, .back-btn { background: none; border: none; color: var(--accent); font-weight: 500; letter-spacing: -0.01em; display: inline-flex; align-items: center; min-height: 44px; padding: 0; align-self: flex-start; }
   .txn-clear { font-size: 14px; }
+  .back-btn { font-size: 15px; }
+  .check-row { display: flex; align-items: center; gap: var(--s2); min-height: 44px; }
+  .check-row input { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .check-row label { font-size: 13px; color: var(--muted); }
+  /* Needed because the rule above sets display:inline-flex, which on its own beats
+     the hidden attribute -- the same trap .txn-filters hit. */
+  .back-btn[hidden] { display: none; }
 
   /* --- Floating layers ---------------------------------------------------- */
   .toast { position: fixed; bottom: 116px; left: var(--s5); right: var(--s5); max-width: 540px; margin: 0 auto; background: var(--panel-2); border-radius: var(--r-ctl); padding: 14px var(--s4); text-align: center; font-size: 14px; box-shadow: var(--float); display: none; z-index: 20; }
@@ -283,6 +290,7 @@
     </section>
 
     <section id="page-transactions" class="page">
+      <button type="button" class="back-btn" id="tf-back" hidden></button>
       <div class="section-title">Transactions</div>
       <button type="button" class="filter-toggle" id="tf-toggle" aria-expanded="false" aria-controls="tf-panel">
         <span class="label" id="tf-summary">Filters</span>
@@ -306,6 +314,17 @@
         <div class="field">
           <label for="tf-category">Category</label>
           <select id="tf-category"><option value="">All Categories</option></select>
+        </div>
+        <div class="field">
+          <label for="tf-sort">Sort by</label>
+          <select id="tf-sort">
+            <option value="date">Date, newest first</option>
+            <option value="amount">Amount, largest first</option>
+          </select>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="tf-transfers">
+          <label for="tf-transfers">Show card payments (transfers between our own accounts)</label>
         </div>
         <button type="button" class="txn-clear" id="tf-clear">Clear Filters</button>
       </div>
@@ -578,8 +597,46 @@
       hideChartTooltip();
     }
 
+    // Where a category drill-down came FROM, so History can offer a way back.
+    // Null whenever History was reached through the tab bar -- there is nothing to
+    // return to in that case and the button stays hidden rather than offering a jump
+    // the user never made.
+    var drillOrigin = null;
+
+    function setDrillOrigin() {
+      var active = document.querySelector('.page.active');
+      var page = active ? active.id.replace('page-', '') : '';
+      // Capture the Spending sub-view too. The two drill-downs start from DIFFERENT
+      // sub-views -- a category row from This month, a sparkline row from Over time --
+      // so restoring the page alone would land him on the wrong half of the tab.
+      var seg = document.querySelector('#spendView button.active');
+      drillOrigin = { page: page, seg: seg ? seg.dataset.value : null };
+      var navBtn = document.querySelector('.nav-btn[data-page="' + page + '"]');
+      var back = $('#tf-back');
+      back.textContent = '\u2039 Back to ' + (navBtn ? navBtn.textContent.trim() : page);
+      back.removeAttribute('hidden');
+    }
+
+    function clearDrillOrigin() {
+      drillOrigin = null;
+      $('#tf-back').setAttribute('hidden', '');
+    }
+
     $all('.nav-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() { switchToPage(btn.dataset.page); });
+      // Using the tab bar abandons the drill-down, so the crumb goes with it --
+      // otherwise the button lingers and offers to "go back" somewhere he never was.
+      btn.addEventListener('click', function() { clearDrillOrigin(); switchToPage(btn.dataset.page); });
+    });
+
+    $('#tf-back').addEventListener('click', function() {
+      if (!drillOrigin) return;
+      var page = drillOrigin.page, seg = drillOrigin.seg;
+      clearDrillOrigin();
+      switchToPage(page);
+      if (seg) {
+        var segBtn = document.querySelector('#spendView button[data-value="' + seg + '"]');
+        if (segBtn) segBtn.click();     // reuse the real handler rather than re-implementing it
+      }
     });
     // Month / Over time within Spending.
     $all('#spendView button').forEach(function(btn) {
@@ -759,8 +816,12 @@
       '</div>';
     }
 
-    function renderTransactionList(list) {
-      $('#txnCount').textContent = list.length + (list.length === 1 ? ' transaction' : ' transactions');
+    function renderTransactionList(list, hiddenCount) {
+      // Say so when rows are being withheld. A count that silently disagrees with the
+      // bank statement is how someone stops trusting the whole app.
+      $('#txnCount').textContent = list.length + (list.length === 1 ? ' transaction' : ' transactions') +
+        (hiddenCount ? ' \u00b7 ' + hiddenCount + ' card-payment ' +
+                       (hiddenCount === 1 ? 'row' : 'rows') + ' hidden' : '');
       $('#txnList').innerHTML = list.length
         ? list.map(txnRow).join('')
         : '<div class="loading">No transactions match these filters.</div>';
@@ -870,17 +931,65 @@
       $('#tf-toggle').setAttribute('aria-expanded', open ? 'true' : 'false');
     });
 
+    // Paying the Capital One card is not a transaction, it is the SAME money twice:
+    // 'Credit Card Payments' is the leg that leaves checking and 'Card Payment' is the
+    // leg that lands on the card, equal and opposite, a day apart. 70 rows, $29,813
+    // out against $28,172 in, netting to nothing -- and being the largest figures in
+    // the file they owned the top of the amount sort. The spending they settle was
+    // already counted the day the card was swiped.
+    //
+    // 'Internal Savings Transfer' is a transfer too and is deliberately NOT hidden:
+    // it is the thing the household is actively trying to do more of, and hiding the
+    // evidence of it would be the wrong kind of tidy.
+    //
+    // Real debt paydown stays visible throughout -- Auto Loan Payment, Credit Line
+    // Payment, Student Loans, Buy Now Pay Later, Ring Financing. That money genuinely
+    // left the household, which is the whole distinction.
+    var TRANSFER_LEGS = { 'Credit Card Payments': true, 'Card Payment': true };
+
     function applyTxnFilters() {
       var from = $('#tf-from').value;
       var to = $('#tf-to').value;
       var category = $('#tf-category').value;
+      var showTransfers = $('#tf-transfers').checked;
+      var hidden = 0;
       var filtered = allTransactions.filter(function(t) {
         if (from && t.date < from) return false;
         if (to && t.date > to) return false;
         if (category && t.category !== category) return false;
+        // Yields to an explicit choice: selecting 'Credit Card Payments' in the
+        // Category filter means he wants to see them, so the hide rule stands down.
+        if (!showTransfers && TRANSFER_LEGS[t.category] && category !== t.category) {
+          hidden++;
+          return false;
+        }
         return true;
       });
-      renderTransactionList(filtered);
+
+      // .filter() hands back a new array, so sorting it never disturbs the order of
+      // allTransactions itself. Sort explicitly in BOTH modes -- switching back to
+      // Date has to actually restore date order, not just stop re-sorting.
+      if ($('#tf-sort').value === 'amount') {
+        // Outflows first, largest to smallest, THEN inflows largest to smallest.
+        //
+        // Sorting purely by size looked right and was useless: with All Categories
+        // selected the top of the list was six consecutive payroll deposits, because a
+        // $2,132 paycheck outranks every expense in the household. Sorting by the raw
+        // signed value is worse still -- it buries the biggest spend at the very bottom.
+        // Money out is what this list gets opened for, so money out comes first, and
+        // money in is grouped after it rather than interleaved.
+        filtered.sort(function(a, b) {
+          var aOut = a.amount < 0, bOut = b.amount < 0;
+          if (aOut !== bOut) return aOut ? -1 : 1;
+          return Math.abs(b.amount) - Math.abs(a.amount);
+        });
+      } else {
+        filtered.sort(function(a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });
+      }
+
+      renderTransactionList(filtered, hidden);
+      // The chart buckets by day or month, so it is unaffected by list order -- it is
+      // deliberately given the same array rather than a date-sorted copy.
       renderTxnChart(filtered);
       updateFilterSummary();
     }
@@ -911,7 +1020,10 @@
     // Income vs Spending, and the Month tab's full category breakdown).
     // Student Loans and Insurance are the same kind of thing when you want them.
     // Mirrored by FIXED_COSTS in WebApp.gs, which ranks the Dashboard KPI.
-    var FIXED_COSTS = { 'Rent/Housing': true };
+    // Student loans joined rent 2026-08-24 (Trevon: "student loans are fixed").
+    // These are excluded from the VARIABLE-spend ranking only -- they are still real
+    // money out and still counted in total spend.
+    var FIXED_COSTS = { 'Rent/Housing': true, 'Student Loans': true };
 
     function monthLabel(key) {
       var parts = key.split('-');
@@ -1112,6 +1224,7 @@
       $('#tf-category').value = category;
       syncMonthSelect();
       applyTxnFilters();
+      setDrillOrigin();          // must run BEFORE the switch -- it reads the active page
       switchToPage('transactions');
     }
 
@@ -1133,6 +1246,7 @@
       $('#tf-month').value = '';
       $('#tf-category').value = row.dataset.category;
       applyTxnFilters();
+      setDrillOrigin();          // must run BEFORE the switch -- it reads the active page
       switchToPage('transactions');
     });
 
@@ -1341,6 +1455,8 @@
       $('#' + id).addEventListener('change', function() { syncMonthSelect(); applyTxnFilters(); });
     });
     $('#tf-category').addEventListener('change', applyTxnFilters);
+    $('#tf-sort').addEventListener('change', applyTxnFilters);
+    $('#tf-transfers').addEventListener('change', applyTxnFilters);
     $('#tf-month').addEventListener('change', function() {
       var k = $('#tf-month').value;
       if (k) {
@@ -1358,6 +1474,8 @@
       $('#tf-to').value = '';
       $('#tf-month').value = '';
       $('#tf-category').value = '';
+      $('#tf-sort').value = 'date';
+      $('#tf-transfers').checked = false;
       applyTxnFilters();
     });
 
