@@ -223,6 +223,27 @@
      been caught by the same trap: a display: rule on the element beats a bare
      [hidden], so the attribute silently stops working. This settles it everywhere. */
   [hidden] { display: none !important; }
+  .view-bar { display: flex; align-items: center; justify-content: space-between;
+              gap: var(--s3); margin: var(--s2) 0 var(--s4); }
+  .seg-sm { margin: 0; }
+  .seg-sm button { padding: 9px var(--s4); font-size: 13px; }
+
+  .switch-row { display: flex; align-items: center; gap: var(--s3);
+                min-height: 44px; cursor: pointer; user-select: none; }
+  .switch-label { font-size: 13px; color: var(--muted); font-weight: 500; letter-spacing: -0.01em; }
+  /* A real sliding switch rather than a checkbox: this is a mode you flip, not a
+     value you tick, and the thumb travelling says that in a way a tickbox does not. */
+  .switch { position: relative; display: inline-block; width: 46px; height: 28px; flex-shrink: 0; }
+  .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 2; }
+  .switch .track { position: absolute; inset: 0; border-radius: var(--r-pill);
+                   background: var(--panel-2); transition: background 0.2s ease; }
+  .switch .thumb { position: absolute; top: 4px; left: 4px; width: 20px; height: 20px;
+                   border-radius: 50%; background: var(--faint);
+                   transition: transform 0.2s cubic-bezier(0.2,0.8,0.2,1), background 0.2s ease; }
+  .switch input:checked ~ .track { background: var(--accent-soft); }
+  .switch input:checked ~ .thumb { transform: translateX(18px); background: var(--accent); }
+  .switch input:focus-visible ~ .track { box-shadow: 0 0 0 3px var(--accent-soft); }
+
   .check-row { display: flex; align-items: center; gap: var(--s2); min-height: 44px; }
   .check-row input { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
   .check-row label { font-size: 13px; color: var(--muted); }
@@ -348,24 +369,30 @@
           <label for="tf-category">Category</label>
           <select id="tf-category"><option value="">All Categories</option></select>
         </div>
-        <div class="field">
-          <label for="tf-sort">Sort by</label>
-          <select id="tf-sort">
-            <option value="date">Date, newest first</option>
-            <option value="amount">Amount, largest first</option>
-          </select>
-        </div>
         <div class="check-row">
           <input type="checkbox" id="tf-transfers">
           <label for="tf-transfers">Show card payments (transfers between our own accounts)</label>
         </div>
-        <div class="check-row">
-          <input type="checkbox" id="tf-paidby">
-          <label for="tf-paidby">Colour by who paid</label>
-        </div>
         <button type="button" class="txn-clear" id="tf-clear">Clear Filters</button>
       </div>
       <div id="txnChart"></div>
+      <!-- VIEW controls, not filters: they change how the same rows are presented,
+           so they live out here rather than behind the Filters disclosure. Show card
+           payments stays in Filters, because that one changes WHICH rows appear. -->
+      <div class="view-bar">
+        <div class="seg seg-sm" id="txnSort">
+          <button type="button" data-value="date" class="active">Date</button>
+          <button type="button" data-value="amount">Amount</button>
+        </div>
+        <label class="switch-row">
+          <span class="switch-label">Who paid</span>
+          <span class="switch">
+            <input type="checkbox" id="tf-paidby">
+            <span class="track"></span>
+            <span class="thumb"></span>
+          </span>
+        </label>
+      </div>
       <div class="txn-count" id="txnCount"></div>
       <div class="paidby-key" id="paidbyKey"></div>
       <div class="card" id="txnList"><div class="loading">Loading transactions…</div></div>
@@ -1182,7 +1209,8 @@
       // .filter() hands back a new array, so sorting it never disturbs the order of
       // allTransactions itself. Sort explicitly in BOTH modes -- switching back to
       // Date has to actually restore date order, not just stop re-sorting.
-      if ($('#tf-sort').value === 'amount') {
+      var sortActive = document.querySelector('#txnSort button.active');
+      if (sortActive && sortActive.dataset.value === 'amount') {
         // Outflows first, largest to smallest, THEN inflows largest to smallest.
         //
         // Sorting purely by size looked right and was useless: with All Categories
@@ -1697,7 +1725,13 @@
       $('#' + id).addEventListener('change', function() { syncMonthSelect(); applyTxnFilters(); });
     });
     $('#tf-category').addEventListener('change', applyTxnFilters);
-    $('#tf-sort').addEventListener('change', applyTxnFilters);
+    $all('#txnSort button').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        $all('#txnSort button').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        applyTxnFilters();
+      });
+    });
     $('#tf-transfers').addEventListener('change', applyTxnFilters);
     $('#tf-paidby').addEventListener('change', function() {
       var on = $('#tf-paidby').checked;
@@ -1726,8 +1760,8 @@
       $('#tf-to').value = '';
       $('#tf-month').value = '';
       $('#tf-category').value = '';
-      $('#tf-sort').value = 'date';
       $('#tf-transfers').checked = false;
+      // Sort and the colour switch are VIEW state, not filters, so Clear leaves both.
       // The colour mode is a VIEW, not a filter -- Clear Filters leaves it alone.
       applyTxnFilters();
     });
