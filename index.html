@@ -39,6 +39,11 @@
     --pos: #3ddb9a;
     --neg: #ff6b6b;
 
+    /* Who swiped the card. Deliberately NOT --accent, which already means "tappable" --
+       a row tinted with the link colour reads as interactive when it is not. */
+    --paid-trevon: #4d8dff;
+    --paid-ainsley: #ff7ac0;
+
     --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
     --r-ctl: 12px; --r-panel: 18px; --r-pill: 999px;
     --float: 0 10px 30px rgba(0,0,0,0.5);
@@ -104,6 +109,21 @@
   .cat-row .chev { color: var(--faint); margin-left: var(--s2); font-weight: 400; }
 
   .txn-main { min-width: 0; }
+  /* Off by default. The stripe is a 3px left edge rather than a tint or a badge: it
+     scans down a long list at a glance and costs no horizontal room on a phone. */
+  .txn-row .who { display: none; }
+  #txnList.show-paidby .txn-row { position: relative; padding-left: var(--s3); }
+  #txnList.show-paidby .txn-row .who {
+    display: block; position: absolute; left: 0; top: 6px; bottom: 6px;
+    width: 3px; border-radius: var(--r-pill); background: var(--hair);
+  }
+  #txnList.show-paidby .txn-row .txn-merchant { color: var(--text); }
+  .paidby-key { display: none; gap: var(--s4); align-items: center; font-size: 12px;
+                color: var(--muted); margin: calc(-1 * var(--s3)) 0 var(--s3); }
+  .paidby-key.on { display: flex; }
+  .paidby-key i { display: inline-block; width: 10px; height: 3px; border-radius: var(--r-pill);
+                  margin-right: 6px; vertical-align: middle; }
+
   .txn-merchant { font-weight: 500; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -0.01em; }
   .txn-meta { font-size: 12px; color: var(--faint); margin-top: 3px; }
   .txn-amount { font-weight: 600; font-size: 15px; white-space: nowrap; letter-spacing: -0.015em; }
@@ -339,10 +359,15 @@
           <input type="checkbox" id="tf-transfers">
           <label for="tf-transfers">Show card payments (transfers between our own accounts)</label>
         </div>
+        <div class="check-row">
+          <input type="checkbox" id="tf-paidby">
+          <label for="tf-paidby">Colour by who paid</label>
+        </div>
         <button type="button" class="txn-clear" id="tf-clear">Clear Filters</button>
       </div>
       <div id="txnChart"></div>
       <div class="txn-count" id="txnCount"></div>
+      <div class="paidby-key" id="paidbyKey"></div>
       <div class="card" id="txnList"><div class="loading">Loading transactions…</div></div>
     </section>
   </main>
@@ -947,10 +972,29 @@
 
     var allTransactions = [];
 
+    // Trevon blue, Ainsley pink -- his choice. Anyone else falls back to a palette by
+    // sorted position, so the feature keeps working if a name changes or a third person
+    // appears, instead of silently going grey. Hardcoding the names as CSS classes did
+    // exactly that: the demo's fabricated people rendered every row the same colour and
+    // the whole feature looked broken.
+    var PAID_TINT = { trevon: 'var(--paid-trevon)', ainsley: 'var(--paid-ainsley)' };
+    var PAID_FALLBACK = ['var(--paid-trevon)', 'var(--paid-ainsley)', 'var(--pos)', 'var(--neg)'];
+    function paidColor(name) {
+      if (!name || name === 'Unassigned') return '';
+      var key = String(name).toLowerCase();
+      if (PAID_TINT[key]) return PAID_TINT[key];
+      var i = peopleInData().indexOf(name);
+      return i === -1 ? '' : PAID_FALLBACK[i % PAID_FALLBACK.length];
+    }
+
     function txnRow(t) {
       var cls = Number(t.amount) < 0 ? 'negative' : 'positive';
       var badge = t.account === 'credit' ? 'Credit Card' : 'Checking';
+      // paidBy is WHO SWIPED, from the card. Distinct from t.person, which is whose
+      // budget it belongs to -- a Joint row still knows who paid.
+      var tint = paidColor(t.paidBy);
       return '<div class="txn-row">' +
+        '<span class="who"' + (tint ? ' style="background:' + tint + '"' : '') + '></span>' +
         '<div class="txn-main">' +
           '<div class="txn-merchant">' + t.merchant + '</div>' +
           '<div class="txn-meta">' + t.date + ' · ' + badge + ' · ' + t.category + '</div>' +
@@ -1655,6 +1699,16 @@
     $('#tf-category').addEventListener('change', applyTxnFilters);
     $('#tf-sort').addEventListener('change', applyTxnFilters);
     $('#tf-transfers').addEventListener('change', applyTxnFilters);
+    $('#tf-paidby').addEventListener('change', function() {
+      var on = $('#tf-paidby').checked;
+      $('#txnList').classList.toggle('show-paidby', on);
+      $('#paidbyKey').classList.toggle('on', on);
+      if (on) {
+        $('#paidbyKey').innerHTML = peopleInData().map(function(p) {
+          return '<span><i style="background:' + paidColor(p) + '"></i>' + p + '</span>';
+        }).join('') + '<span><i style="background:var(--hair)"></i>no card on the row</span>';
+      }
+    });
     $('#tf-month').addEventListener('change', function() {
       var k = $('#tf-month').value;
       if (k) {
@@ -1674,6 +1728,7 @@
       $('#tf-category').value = '';
       $('#tf-sort').value = 'date';
       $('#tf-transfers').checked = false;
+      // The colour mode is a VIEW, not a filter -- Clear Filters leaves it alone.
       applyTxnFilters();
     });
 
