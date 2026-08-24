@@ -122,7 +122,15 @@
   .goal-card .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--s3); gap: var(--s2); }
   .goal-card .name { font-weight: 600; font-size: 16px; letter-spacing: -0.015em; }
   .goal-card .amounts { font-size: 13px; color: var(--muted); white-space: nowrap; }
-  .bar-track { background: rgba(255,255,255,0.07); border-radius: var(--r-pill); height: 5px; overflow: hidden; }
+  .bar-track { background: rgba(255,255,255,0.07); border-radius: var(--r-pill); height: 5px; overflow: hidden; position: relative; }
+  /* Budget bars only: the fill can now run PAST the target, so the track cannot
+     clip. The fill carries its own radius, so dropping overflow costs nothing. */
+  .bar-track.with-target { overflow: visible; }
+  /* Where the target sits on the scale. A reference mark rather than a status,
+     so it stays greyscale - colour is reserved for meaning. It overhangs the 5px
+     track top and bottom so it still reads against a filled bar. */
+  .bar-target { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px;
+                background: var(--text); border-radius: 1px; }
   .bar-fill { background: var(--accent); height: 100%; border-radius: var(--r-pill); transition: width 0.5s cubic-bezier(0.2,0.8,0.2,1); }
   /* Colour carries meaning only: a bar goes red when the budget is missed, which
      is over target for spending and UNDER target for savings. */
@@ -890,25 +898,15 @@
       $('#tf-month').value = rangeIsOneMonth($('#tf-from').value, $('#tf-to').value) || '';
     }
 
-    // What the collapsed row says. Without this, arriving from a category tap
-    // shows a filtered list with nothing on screen explaining why.
-    function filterSummary() {
-      var parts = [];
-      var cat = $('#tf-category').value;
-      var from = $('#tf-from').value, to = $('#tf-to').value;
-      if (cat) parts.push(cat);
-      var oneMonth = rangeIsOneMonth(from, to);
-      if (oneMonth) parts.push(monthLabel(oneMonth));
-      else if (from && to) parts.push(from + ' to ' + to);
-      else if (from) parts.push('from ' + from);
-      else if (to) parts.push('up to ' + to);
-      return parts.join(' \u00b7 ');
+    // The row label stays "Filters" regardless. This only drives the accent
+    // tint, which is what stops a collapsed panel hiding the fact that the list
+    // is not showing everything.
+    function hasActiveFilters() {
+      return !!($('#tf-category').value || $('#tf-from').value || $('#tf-to').value);
     }
 
     function updateFilterSummary() {
-      var s = filterSummary();
-      $('#tf-summary').textContent = s || 'Filters';
-      $('#tf-toggle').classList.toggle('filtered', !!s);
+      $('#tf-toggle').classList.toggle('filtered', hasActiveFilters());
     }
 
     $('#tf-toggle').addEventListener('click', function() {
@@ -1233,6 +1231,27 @@
     // Budgets live on the Goals page and always show the LATEST month, because
     // that page answers "how are we doing" rather than "what happened in June".
     // The Spending tab is where a specific month gets picked apart.
+    // The track is a SCALE, not the target. Capping the fill at the target made
+    // every over-budget bar identical - Shopping at 326% of budget rendered the
+    // same as Dining at 140% - so the bar said "over" and nothing about how far.
+    // Now the bar runs past a tick that marks the target, and the tick's position
+    // carries the magnitude: the further left it sits, the worse the overage.
+    //
+    // The 25% headroom keeps the tick off the right edge when under budget, where
+    // it would otherwise be flush with the end of the track and invisible.
+    // Its own function so the maths can be tested without a DOM.
+    function budgetBarGeometry(actual, target) {
+      var scaleMax = Math.max(target * 1.25, actual);
+      if (!(scaleMax > 0)) return { barPct: 0, targetPct: 0, showTick: false };
+      return {
+        barPct: Math.min(100, (actual / scaleMax) * 100),
+        targetPct: Math.min(100, (target / scaleMax) * 100),
+        // A zero target pins the tick to the left edge, where it reads as part of
+        // the track rather than a marker. The note says "target is zero" instead.
+        showTick: target > 0
+      };
+    }
+
     function renderBudgets() {
       var host = $('#budgetList');
       if (!budgetDefs) { host.innerHTML = '<div class="loading">Loading budgets\u2026</div>'; return; }
@@ -1279,10 +1298,10 @@
         }
 
         var up = b.better === 'up';
-        // A zero target cannot be a ratio. Any spend against it is simply missed.
-        var pct = target > 0 ? Math.min(100, (actual / target) * 100)
-                             : (actual > 0 ? 100 : 0);
+        // A zero target cannot be a ratio, so "missed" is a comparison, not a
+        // percentage. Under target is the miss for savings, over for spending.
         var missed = up ? (actual < target - 0.005) : (actual > target + 0.005);
+        var geo = budgetBarGeometry(actual, target);
         var delta = actual - target;
         var deltaTxt = Math.abs(delta) < 0.005 ? 'on target'
           : fmtMoney(Math.abs(delta)) + (delta > 0 ? ' over' : ' under');
@@ -1296,8 +1315,11 @@
         return '<div class="card goal-card">' +
           '<div class="row"><span class="name">' + b.name + '</span>' +
           '<span class="amounts">' + fmtMoney(actual) + ' / ' + fmtMoney(target) + '</span></div>' +
-          '<div class="bar-track"><div class="bar-fill ' + (missed ? 'bad' : 'good') +
-            '" style="width:' + pct.toFixed(1) + '%"></div></div>' +
+          '<div class="bar-track' + (geo.showTick ? ' with-target' : '') + '">' +
+            '<div class="bar-fill ' + (missed ? 'bad' : 'good') +
+              '" style="width:' + geo.barPct.toFixed(1) + '%"></div>' +
+            (geo.showTick ? '<div class="bar-target" style="left:' + geo.targetPct.toFixed(1) + '%"></div>' : '') +
+          '</div>' +
           '<div class="goal-note">' + notes.join(' \u00b7 ') + '</div>' +
           '</div>';
       }).join('');
