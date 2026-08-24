@@ -247,10 +247,8 @@
         <div class="kpi-grid" id="summaryKpiGrid"></div>
         <div class="section-title">Transfers and debt</div>
         <div class="card" id="summaryDebtCard"></div>
-        <div class="section-title">Checking</div>
-        <div class="card" id="summaryCheckingCats"></div>
-        <div class="section-title">Credit card</div>
-        <div class="card" id="summaryCreditCats"></div>
+        <div class="section-title">Spending by category</div>
+        <div class="card" id="summaryCats"></div>
       </div>
 
       <div class="subview" id="spendTrends">
@@ -890,34 +888,38 @@
     function shortMonth(key) { return MONTH_NAMES[Number(key.split('-')[1]) - 1]; }
 
     function computeMonthSummary(monthKey) {
-      var checkingCatTotals = {};
-      var creditCatTotals = {};
+      // ONE bucket. Categories are deliberately NOT split by account: a category
+      // paid for from both accounts appeared twice with two half-numbers and no
+      // total anywhere, and the tap-through never filtered by account, so the
+      // row label promised a split the rest of the app did not honour.
+      // The Checking/Credit KPI tiles keep the split — they are one total shown
+      // two ways, not a duplicated list — so both are still summed here.
+      var catTotals = {};
       var income = 0, ccPayments = 0, autoLoan = 0, creditLine = 0, savingsTransfer = 0;
+      var checkingSpend = 0, creditSpend = 0;
 
       allTransactions.forEach(function(t) {
         if (t.date.slice(0, 7) !== monthKey) return;
+        var spend = -t.amount;
         if (t.account === 'checking') {
           if (t.category === 'Income') { income += t.amount; return; }
-          if (t.category === 'Credit Card Payments') { ccPayments += -t.amount; return; }
-          if (t.category === 'Auto Loan Payment') { autoLoan += -t.amount; return; }
-          if (t.category === 'Credit Line Payment') { creditLine += -t.amount; return; }
-          if (t.category === 'Internal Savings Transfer') { savingsTransfer += -t.amount; return; }
-          checkingCatTotals[t.category] = (checkingCatTotals[t.category] || 0) + (-t.amount);
+          if (t.category === 'Credit Card Payments') { ccPayments += spend; return; }
+          if (t.category === 'Auto Loan Payment') { autoLoan += spend; return; }
+          if (t.category === 'Credit Line Payment') { creditLine += spend; return; }
+          if (t.category === 'Internal Savings Transfer') { savingsTransfer += spend; return; }
+          checkingSpend += spend;
         } else {
+          // The credit leg of a card payment. Without this guard, paying the
+          // card reads as spending.
           if (CREDIT_EXCLUDE[t.category]) return;
-          creditCatTotals[t.category] = (creditCatTotals[t.category] || 0) + (-t.amount);
+          creditSpend += spend;
         }
+        catTotals[t.category] = (catTotals[t.category] || 0) + spend;
       });
 
-      function toSortedList(totals) {
-        return Object.keys(totals).map(function(cat) { return { category: cat, amount: totals[cat] }; })
-          .sort(function(a, b) { return b.amount - a.amount; });
-      }
-
-      var checkingCategories = toSortedList(checkingCatTotals);
-      var creditCategories = toSortedList(creditCatTotals);
-      var checkingSpend = checkingCategories.reduce(function(s, c) { return s + c.amount; }, 0);
-      var creditSpend = creditCategories.reduce(function(s, c) { return s + c.amount; }, 0);
+      var categories = Object.keys(catTotals).map(function(cat) {
+        return { category: cat, amount: catTotals[cat] };
+      }).sort(function(a, b) { return b.amount - a.amount; });
 
       // Paying the credit card is a transfer between our own accounts, NOT debt
       // paydown — that spending was already counted the day it happened. Debt
@@ -930,7 +932,7 @@
         income: income, checkingSpend: checkingSpend, creditSpend: creditSpend,
         totalSpend: checkingSpend + creditSpend, ccPayments: ccPayments, autoLoan: autoLoan, creditLine: creditLine,
         debtPaydown: debtPaydown, savingsTransfer: savingsTransfer, netCashFlow: netCashFlow,
-        checkingCategories: checkingCategories, creditCategories: creditCategories
+        categories: categories
       };
     }
 
@@ -1039,7 +1041,7 @@
 
     // --- Monthly summary ----------------------------------------------------
     function catRows(list) {
-      if (!list.length) return '<div class="loading">No spending in this category group.</div>';
+      if (!list.length) return '<div class="loading">No spending recorded for this month.</div>';
       return list.map(function(c) {
         var cls = c.amount < 0 ? 'negative' : '';
         return '<div class="cat-row cat-row-link" data-category="' + attrEscape(c.category) + '">' +
@@ -1081,12 +1083,10 @@
       switchToPage('transactions');
     }
 
-    ['summaryCheckingCats', 'summaryCreditCats'].forEach(function(id) {
-      $('#' + id).addEventListener('click', function(e) {
-        var row = e.target.closest('.cat-row-link');
-        if (!row) return;
-        goToHistoryFiltered(row.dataset.category, $('#summaryMonth').value);
-      });
+    $('#summaryCats').addEventListener('click', function(e) {
+      var row = e.target.closest('.cat-row-link');
+      if (!row) return;
+      goToHistoryFiltered(row.dataset.category, $('#summaryMonth').value);
     });
 
     // Same tap-through from the Trends rows, but with no date range — a Trends
@@ -1130,8 +1130,7 @@
         '<div class="cat-row"><span>Internal savings transfer <small style="color:var(--faint)">· transfer</small></span>' +
           '<span class="amt">' + fmtMoney(s.savingsTransfer) + '</span></div>';
 
-      $('#summaryCheckingCats').innerHTML = catRows(s.checkingCategories);
-      $('#summaryCreditCats').innerHTML = catRows(s.creditCategories);
+      $('#summaryCats').innerHTML = catRows(s.categories);
     }
 
     function initSummary() {
