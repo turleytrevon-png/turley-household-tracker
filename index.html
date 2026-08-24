@@ -856,20 +856,29 @@
 
         // The split, stated rather than implied.
         if (L.lastPrincipal !== null && L.lastInterest !== null) {
+          // The total is the SUM OF THE PARTS, never L.payment. Those are different
+          // numbers the moment the payment field carries a PLAN rather than history --
+          // which happened the day the 9044 payment was set to the intended $500 while
+          // the split still described an actual $200 payment. Rendering "$500.00 =
+          // $89.27 + $110.73" would have shipped a line that visibly fails to add up.
+          var lastTotal = L.lastPrincipal + L.lastInterest;
           parts.push('<div class="split">' +
-            '<span>Last payment ' + fmtMoneyCents(L.payment) + '</span>' +
+            '<span>Last payment ' + fmtMoneyCents(lastTotal) + '</span>' +
             '<span class="sep">=</span>' +
             '<span class="to-debt">' + fmtMoneyCents(L.lastPrincipal) +
               (L.kind === 'card' ? ' off the balance' : ' to the loan') + '</span>' +
             '<span class="sep">+</span>' +
             '<span class="to-interest">' + fmtMoneyCents(L.lastInterest) + ' interest' +
-            (L.lastInterestPct !== null ? ' (' + L.lastInterestPct + '%)' : '') + '</span>' +
+            (lastTotal > 0 ? ' (' + (Math.round(L.lastInterest / lastTotal * 1000) / 10) + '%)' : '') +
+            '</span>' +
             '</div>');
         }
 
         var note = [];
         if (L.apr) note.push((L.apr * 100).toFixed(3) + '% APR');
-        if (L.paymentsLeft) note.push(L.paymentsLeft + ' payments left');
+        // Say what the projection ASSUMES. "11 payments left" is only true at the
+        // planned figure, and the line above it shows a different, smaller, real one.
+        if (L.paymentsLeft) note.push(L.paymentsLeft + ' payments left at ' + fmtMoney(L.payment) + '/mo');
         if (L.futureInterest) note.push(fmtMoney(L.futureInterest) + ' interest still to come');
         if (L.interestPaid) note.push(fmtMoney(L.interestPaid) + ' interest paid so far');
         if (note.length) parts.push('<div class="payoff-note">' + note.join(' \u00b7 ') + '</div>');
