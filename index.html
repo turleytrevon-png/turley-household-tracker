@@ -1000,25 +1000,51 @@
     function renderTxnChart(list) {
       var host = $('#txnChart');
       var category = $('#tf-category').value;
-      if (!category) { host.innerHTML = ''; return; }
+
+      // Under "All Categories" this now draws the aggregate. The old code returned
+      // early, reasoning that the bars would just be the household total that Trends
+      // draws better -- but Trends has no date range. History does, so this answers a
+      // question Trends cannot: what did we spend between these two dates.
+      //
+      // The aggregate must EXCLUDE non-spend, or it is not a spending chart. Card
+      // payments alone are $29,813 out of checking, which would tower over every real
+      // category and make the bars useless. An explicitly chosen category is never
+      // filtered though -- picking 'Credit Card Payments' from the dropdown and being
+      // shown an empty chart would read as a bug, not as a policy.
+      var aggregate = !category;
+      var source = list;
+      var excluded = 0;
+      if (aggregate) {
+        source = list.filter(function(t) {
+          if (t.amount < 0 && NON_SPEND[t.category]) { excluded++; return false; }
+          return true;
+        });
+      }
 
       var oneMonth = rangeIsOneMonth($('#tf-from').value, $('#tf-to').value);
-      var d = txnChartData(list, oneMonth);
+      var d = txnChartData(source, oneMonth);
       if (!d.count) { host.innerHTML = ''; return; }
 
       var refunds = 'Outflows only \u2014 a refund shows in the list below but not in the bars.';
       var title, note;
+      var label = aggregate ? 'All spending' : category;
       if (oneMonth) {
-        title = category + ' \u00b7 ' + monthLabel(oneMonth);
+        title = label + ' \u00b7 ' + monthLabel(oneMonth);
         note = 'One bar per day. ' + refunds;
       } else {
-        title = category;
+        title = label;
         note = (d.keys.length ? monthLabel(d.keys[0]) + ' \u2192 ' + monthLabel(d.keys[d.keys.length - 1]) + '. ' : '') +
           'One bar per month. ' + refunds;
       }
+      // Say what was left out rather than leaving the total unexplainable against the
+      // list below it.
+      if (aggregate && excluded) {
+        note += ' Transfers and debt payments excluded (' + excluded +
+                (excluded === 1 ? ' row' : ' rows') + ').';
+      }
 
       host.innerHTML = chartCard(title, note,
-        buildBarChart(d.labels, [{ name: category, color: SPARK_COLOR, values: d.values }],
+        buildBarChart(d.labels, [{ name: label, color: SPARK_COLOR, values: d.values }],
           { height: 190, labelEvery: d.labels.length > 20 ? 5 : (d.labels.length > 8 ? 2 : 1),
             tipLabels: oneMonth ? d.labels.map(function(day) { return shortMonth(oneMonth) + ' ' + day; }) : null })) +
         '<div class="txn-count">' + fmtMoney(d.total) + ' total across ' + d.count +
@@ -1149,6 +1175,20 @@
     // money out and still counted in total spend.
     var FIXED_COSTS = { 'Rent/Housing': true, 'Student Loans': true };
 
+    // Mirrors NON_SPEND in WebApp.gs. Money that MOVES rather than money that GOES:
+    // either between our own accounts, or against a debt whose spending was already
+    // counted when it happened. Was an inline five-way || in renderTrends; named here
+    // because the History aggregate chart needs exactly the same list, and two copies
+    // of it would drift.
+    var NON_SPEND = {
+      'Internal Savings Transfer': true,
+      'Credit Card Payments': true,
+      'Auto Loan Payment': true,
+      'Credit Line Payment': true,
+      'Card Payment': true,
+      'Income': true
+    };
+
     function monthLabel(key) {
       var parts = key.split('-');
       return MONTH_NAMES[Number(parts[1]) - 1] + ' ' + parts[0];
@@ -1246,9 +1286,7 @@
       var totals = {};
       allTransactions.forEach(function(t) {
         if (t.amount >= 0) return;
-        if (t.category === 'Internal Savings Transfer' || t.category === 'Credit Card Payments' ||
-            t.category === 'Auto Loan Payment' || t.category === 'Credit Line Payment' ||
-            t.category === 'Card Payment') return;
+        if (NON_SPEND[t.category]) return;
         if (FIXED_COSTS[t.category]) return;
         totals[t.category] = (totals[t.category] || 0) + (-t.amount);
       });
