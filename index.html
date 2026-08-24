@@ -171,9 +171,7 @@
   .month-select { margin-bottom: var(--s5); font-weight: 600; }
   .txn-filters { display: flex; flex-direction: column; gap: var(--s3); margin-bottom: var(--s5); }
   /* Collapsed by default: the three filter rows cost roughly 380px before you
-     reach the list, and most visits to History never touch them. The attribute
-     selector is needed because [hidden] alone loses to display:flex above. */
-  .txn-filters[hidden] { display: none; }
+     reach the list, and most visits to History never touch them. */
   .filter-toggle {
     width: 100%; display: flex; align-items: center; justify-content: space-between;
     gap: var(--s3); background: var(--panel); border: none; border-radius: var(--r-ctl);
@@ -192,12 +190,23 @@
   .txn-clear, .back-btn { background: none; border: none; color: var(--accent); font-weight: 500; letter-spacing: -0.01em; display: inline-flex; align-items: center; min-height: 44px; padding: 0; align-self: flex-start; }
   .txn-clear { font-size: 14px; }
   .back-btn { font-size: 15px; }
+  /* The principal/interest split is the reason this section exists -- Trevon kept the
+     payment as ONE row and asked for the split shown clearly, so it is not a footnote. */
+  .split { display: flex; gap: var(--s2); align-items: baseline; flex-wrap: wrap;
+           margin-top: var(--s3); font-size: 13px; }
+  .split .to-debt { color: var(--pos); font-weight: 600; }
+  .split .to-interest { color: var(--neg); font-weight: 600; }
+  .split .sep { color: var(--faint); }
+  .payoff-note { font-size: 12px; color: var(--faint); margin-top: var(--s2); }
+  .payoff-win { font-size: 13px; color: var(--accent); font-weight: 500; margin-top: var(--s2); }
+  /* ONE rule for the hidden attribute, because two separate elements have already
+     been caught by the same trap: a display: rule on the element beats a bare
+     [hidden], so the attribute silently stops working. This settles it everywhere. */
+  [hidden] { display: none !important; }
   .check-row { display: flex; align-items: center; gap: var(--s2); min-height: 44px; }
   .check-row input { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
   .check-row label { font-size: 13px; color: var(--muted); }
-  /* Needed because the rule above sets display:inline-flex, which on its own beats
-     the hidden attribute -- the same trap .txn-filters hit. */
-  .back-btn[hidden] { display: none; }
+
 
   /* --- Floating layers ---------------------------------------------------- */
   .toast { position: fixed; bottom: 116px; left: var(--s5); right: var(--s5); max-width: 540px; margin: 0 auto; background: var(--panel-2); border-radius: var(--r-ctl); padding: 14px var(--s4); text-align: center; font-size: 14px; box-shadow: var(--float); display: none; z-index: 20; }
@@ -287,6 +296,10 @@
       <div id="budgetList"><div class="loading">Loading budgets…</div></div>
       <div class="section-title">Savings goals</div>
       <div id="goalsList"><div class="loading">Loading goals…</div></div>
+      <!-- Hidden until a loan actually exists, so an empty Loans tab leaves no
+           orphan heading behind. -->
+      <div class="section-title" id="debtTitle" hidden>Debt payoff</div>
+      <div id="debtList" hidden></div>
     </section>
 
     <section id="page-transactions" class="page">
@@ -356,6 +369,17 @@
     var num = Number(n);
     var sign = num < 0 ? '-' : '';
     return sign + '$' + Math.abs(num).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+  }
+
+  // Whole dollars everywhere else, but the loan split needs cents: rounded, a
+  // $158.91 payment reads as "$107 + $52", which is $159, and a total that visibly
+  // fails to add up is worse than no total. These are the bank's own figures and
+  // should be checkable against the statement to the penny.
+  function fmtMoneyCents(n) {
+    if (n === '' || n === null || n === undefined) return '--';
+    var num = Number(n);
+    return (num < 0 ? '-' : '') + '$' +
+      Math.abs(num).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   function fmtShort(n) {
@@ -776,6 +800,75 @@
           '</div>';
       }).join('');
     }
+
+    // Debt payoff. A loan is the INVERSE of a savings goal -- start at a balance and
+    // drive it to zero -- but the same bar reads correctly for both: target is the
+    // original principal, progress is the principal actually repaid.
+    //
+    // The payment stays ONE row in History, matching the bank statement. The split
+    // comes from the Loans tab, which is where the bank's own PRINCIPAL/INTEREST
+    // figures are recorded. Trevon, 2026-08-24: "one row with the split stored
+    // alongside it. I still want it shown clearly in the app."
+    function renderLoans(loans) {
+      if (!loans || !loans.length) return;          // section stays hidden
+      $('#debtTitle').removeAttribute('hidden');
+      $('#debtList').removeAttribute('hidden');
+
+      $('#debtList').innerHTML = loans.map(function(L) {
+        var pct = Math.max(0, Math.min(100, L.pctPaid || 0));
+        var parts = [];
+
+        parts.push('<div class="row"><span class="name">' + L.name + '</span>' +
+          '<span class="amounts">' + fmtMoneyCents(L.currentBalance) + ' left</span></div>');
+        parts.push('<div class="bar-track"><div class="bar-fill good" style="width:' + pct + '%"></div></div>');
+        parts.push('<div class="goal-note">' + fmtMoneyCents(L.principalPaid) + ' of ' +
+          fmtMoneyCents(L.originalPrincipal) + ' paid off \u00b7 ' + pct.toFixed(1) + '%</div>');
+
+        // The split, stated rather than implied.
+        if (L.lastPrincipal !== null && L.lastInterest !== null) {
+          parts.push('<div class="split">' +
+            '<span>Last payment ' + fmtMoneyCents(L.payment) + '</span>' +
+            '<span class="sep">=</span>' +
+            '<span class="to-debt">' + fmtMoneyCents(L.lastPrincipal) + ' to the loan</span>' +
+            '<span class="sep">+</span>' +
+            '<span class="to-interest">' + fmtMoneyCents(L.lastInterest) + ' interest' +
+            (L.lastInterestPct !== null ? ' (' + L.lastInterestPct + '%)' : '') + '</span>' +
+            '</div>');
+        }
+
+        var note = [];
+        if (L.apr) note.push((L.apr * 100).toFixed(3) + '% APR');
+        if (L.paymentsLeft) note.push(L.paymentsLeft + ' payments left');
+        if (L.futureInterest) note.push(fmtMoney(L.futureInterest) + ' interest still to come');
+        if (L.interestPaid) note.push(fmtMoney(L.interestPaid) + ' interest paid so far');
+        if (note.length) parts.push('<div class="payoff-note">' + note.join(' \u00b7 ') + '</div>');
+
+        // One scenario, not three -- a menu of options is a decision deferred. The
+        // $100 case is the one that reads as reachable against the current overspend.
+        var pick = null;
+        (L.scenarios || []).forEach(function(sc) { if (sc.extraPerMonth === 100) pick = sc; });
+        if (!pick && L.scenarios && L.scenarios.length) pick = L.scenarios[0];
+        if (pick && pick.interestSaved > 0) {
+          parts.push('<div class="payoff-win">Paying ' + fmtMoney(pick.extraPerMonth) +
+            ' more a month clears it ' + pick.monthsSooner + ' months sooner and saves ' +
+            fmtMoney(pick.interestSaved) + ' in interest.</div>');
+        }
+
+        // Never quietly reconcile a disagreement: say it and let a human judge.
+        if (L.paymentCountAgrees === false) {
+          parts.push('<div class="payoff-note">Schedule says ' + L.paymentsMade +
+            ' payments made, the calendar says ' + L.paymentsMadeByCalendar +
+            ' \u2014 check for a missed or extra payment.</div>');
+        }
+
+        return '<div class="card goal-card">' + parts.join('') + '</div>';
+      }).join('');
+    }
+
+    apiGet('loans').then(function(data) {
+      if (!data || data.error) return;              // no Loans tab yet is not an error
+      renderLoans(data);
+    }).catch(function() { /* the section simply stays hidden */ });
 
     // Targets come from the Sheet's Budget tab. renderBudgets() guards on
     // budgetDefs being null, so whichever of these two fetches lands second is
