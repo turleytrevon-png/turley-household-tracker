@@ -223,6 +223,26 @@
      been caught by the same trap: a display: rule on the element beats a bare
      [hidden], so the attribute silently stops working. This settles it everywhere. */
   [hidden] { display: none !important; }
+  /* The scrub readout. Pinned ABOVE the bars, never under the finger -- a tooltip that
+     follows your thumb on a phone is a tooltip you are covering up. Fixed min-height so
+     the chart does not jump as lines appear and disappear. */
+  .scrub { background: var(--panel-2); border-radius: var(--r-ctl); padding: var(--s3) var(--s4);
+           margin-bottom: var(--s3); min-height: 62px; }
+  .scrub .hint { color: var(--faint); font-size: 12px; }
+  .scrub .head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
+  .scrub .day { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+  .scrub .sum { font-size: 15px; font-weight: 600; color: var(--neg); }
+  .scrub .zero { font-size: 13px; color: var(--faint); font-weight: 500; }
+  .scrub ul { list-style: none; margin: var(--s2) 0 0; padding: 0; }
+  .scrub li { display: flex; justify-content: space-between; gap: var(--s3);
+              font-size: 12px; color: var(--muted); padding: 2px 0; }
+  .scrub li span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scrub li span:last-child { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .scrub .more { color: var(--faint); font-size: 11px; margin-top: 2px; }
+  /* pan-y, not none: vertical page scrolling must still work over the chart, while
+     horizontal movement belongs to the scrub. */
+  #txnChart .chart-card svg { touch-action: pan-y; }
+
   .view-bar { display: flex; align-items: center; justify-content: space-between;
               gap: var(--s3); margin: var(--s2) 0 var(--s4); }
   .seg-sm { margin: 0; }
@@ -493,6 +513,9 @@
   // just noise. Colour is spent on the one thing that means something here: the
   // change column, red for spending up and green for down.
   var SPARK_COLOR = '#4f8ef7';
+  // A lighter shade for the scrubbed bar -- Trevon's request. Lighter rather than a
+  // different hue, so the highlight reads as "this one" and not as another series.
+  var SPARK_HILITE = '#a8caff';
   var AXIS_TEXT = '#6d7f93';
   var GRID_LINE = 'rgba(255,255,255,0.07)';
   var ZERO_LINE = 'rgba(255,255,255,0.20)';
@@ -530,7 +553,12 @@
     // tooltip reading "3 - $45" does not say what the 3 is, so it gets "Jul 3".
     var tipLabels = opts.tipLabels || labels;
     var W = 340, H = opts.height || 180;
-    var padL = 42, padT = 10, padB = 22, padR = 6;
+    // padR trimmed 6 -> 2 and the bar factor is tunable. Neither FIXES tapping: measured,
+    // a daily bar goes 6.1px -> 10.3px on a 390px phone, still under a quarter of a
+    // comfortable 44px target. They make the bars easier to SEE; the scrub layer is what
+    // makes them selectable.
+    var padL = 42, padT = 10, padB = 22, padR = 2;
+    var barFactor = opts.barFactor || 0.64;
     var plotW = W - padL - padR, plotH = H - padT - padB;
 
     var maxV = 0, minV = 0;
@@ -568,7 +596,7 @@
             '" fill="' + s.color + '" rx="3"/>');
         });
       } else {
-        var bw = (groupW * 0.64) / series.length;
+        var bw = (groupW * barFactor) / series.length;
         series.forEach(function(s, si) {
           var v = s.values[i] || 0;
           var y1 = y(v);
@@ -586,14 +614,22 @@
       '" stroke="' + ZERO_LINE + '" stroke-width="1"/>');
     parts.push(xLabels(labels, padL, plotW, H, opts.labelEvery || (labels.length > 8 ? 2 : 1)));
 
-    return svgWrap(W, H, parts);
+    return svgWrap(W, H, parts, { padL: padL, plotW: plotW, bars: labels.length });
   }
 
   // width:100% with height driven by the viewBox, so the chart fills a phone
   // screen exactly and stays a sane size on anything wider.
-  function svgWrap(W, H, parts) {
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" preserveAspectRatio="xMidYMid meet" ' +
-      'style="display:block;height:auto;max-width:560px;margin:0 auto;">' + parts.join('') + '</svg>';
+  // geom, when supplied, is written onto the <svg> so an interaction layer can map a
+  // finger position back to a bar index without re-deriving the layout and drifting out
+  // of step with it.
+  function svgWrap(W, H, parts, geom) {
+    var attrs = '';
+    if (geom) {
+      attrs = ' data-pad-left="' + geom.padL + '" data-plot-width="' + geom.plotW +
+              '" data-bars="' + geom.bars + '" data-vb-width="' + W + '"';
+    }
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" preserveAspectRatio="xMidYMid meet"' + attrs +
+      ' style="display:block;height:auto;max-width:560px;margin:0 auto;">' + parts.join('') + '</svg>';
   }
 
   // Small multiples: one tiny chart per category instead of one chart with every
@@ -1071,19 +1107,31 @@
       // caller to have filtered already — otherwise July 3rd's spend lands on
       // August 3rd's bar, which is exactly the kind of wrong that looks right.
       if (oneMonth) spend = spend.filter(function(t) { return t.date.slice(0, 7) === oneMonth; });
-      var labels = [], values = [], keys = [];
+      // items[] holds the actual rows behind each bar, parallel to values[], so the
+      // readout can name WHAT was bought rather than only the day's total.
+      var labels = [], values = [], keys = [], items = [];
       if (oneMonth) {
         var days = new Date(Number(oneMonth.slice(0, 4)), Number(oneMonth.slice(5, 7)), 0).getDate();
-        var byDay = {};
-        spend.forEach(function(t) { var d = Number(t.date.slice(8, 10)); byDay[d] = (byDay[d] || 0) + (-t.amount); });
-        for (var d = 1; d <= days; d++) { labels.push(String(d)); values.push(byDay[d] || 0); }
+        var byDay = {}, rowsByDay = {};
+        spend.forEach(function(t) {
+          var d = Number(t.date.slice(8, 10));
+          byDay[d] = (byDay[d] || 0) + (-t.amount);
+          (rowsByDay[d] = rowsByDay[d] || []).push(t);
+        });
+        for (var d = 1; d <= days; d++) {
+          labels.push(String(d)); values.push(byDay[d] || 0); items.push(rowsByDay[d] || []);
+        }
       } else {
-        var byMonth = {};
-        spend.forEach(function(t) { var k = t.date.slice(0, 7); byMonth[k] = (byMonth[k] || 0) + (-t.amount); });
+        var byMonth = {}, rowsByMonth = {};
+        spend.forEach(function(t) {
+          var k = t.date.slice(0, 7);
+          byMonth[k] = (byMonth[k] || 0) + (-t.amount);
+          (rowsByMonth[k] = rowsByMonth[k] || []).push(t);
+        });
         keys = Object.keys(byMonth).sort();
-        keys.forEach(function(k) { labels.push(shortMonth(k)); values.push(byMonth[k]); });
+        keys.forEach(function(k) { labels.push(shortMonth(k)); values.push(byMonth[k]); items.push(rowsByMonth[k]); });
       }
-      return { labels: labels, values: values, keys: keys, count: spend.length,
+      return { labels: labels, values: values, keys: keys, items: items, count: spend.length,
                total: values.reduce(function(a, b) { return a + b; }, 0) };
     }
 
@@ -1133,12 +1181,103 @@
                 (excluded === 1 ? ' row' : ' rows') + ').';
       }
 
+      var tips = oneMonth ? d.labels.map(function(day) { return shortMonth(oneMonth) + ' ' + day; })
+                          : d.labels.slice();
       host.innerHTML = chartCard(title, note,
+        '<div class="scrub" id="txnScrub"><div class="hint">Drag across the chart to read a ' +
+          (oneMonth ? 'day' : 'month') + '.</div></div>' +
         buildBarChart(d.labels, [{ name: label, color: SPARK_COLOR, values: d.values }],
           { height: 190, labelEvery: d.labels.length > 20 ? 5 : (d.labels.length > 8 ? 2 : 1),
-            tipLabels: oneMonth ? d.labels.map(function(day) { return shortMonth(oneMonth) + ' ' + day; }) : null })) +
+            barFactor: 0.95, tipLabels: tips })) +
         '<div class="txn-count">' + fmtMoney(d.total) + ' total across ' + d.count +
           (d.count === 1 ? ' outflow' : ' outflows') + '</div>';
+      attachScrub(host, d, tips);
+    }
+
+    // ---- Scrub -------------------------------------------------------------
+    // A measured daily bar is 6.1px wide on a 390px phone against a 44px comfortable
+    // target, and a zero-spend day renders as a 0.5px sliver -- so requiring a HIT on
+    // the bar was never going to work. This reads horizontal position across the whole
+    // plot and picks the nearest bar, which makes the target the full column height and
+    // removes the possibility of missing entirely.
+    function attachScrub(host, data, tips) {
+      var svg = host.querySelector('svg');
+      var read = host.querySelector('#txnScrub');
+      if (!svg || !read) return;
+
+      var padL = Number(svg.dataset.padLeft);
+      var plotW = Number(svg.dataset.plotWidth);
+      var bars = Number(svg.dataset.bars);
+      var vbW = Number(svg.dataset.vbWidth);
+      if (!(bars > 0) || !(plotW > 0)) return;
+
+      var rects = svg.querySelectorAll('rect.bar-seg');
+      var baseFill = SPARK_COLOR;
+      var lastIdx = -1;
+
+      function highlight(i) {
+        for (var k = 0; k < rects.length; k++) {
+          rects[k].setAttribute('fill', k === i ? SPARK_HILITE : baseFill);
+        }
+      }
+
+      function show(i) {
+        if (i === lastIdx) return;
+        lastIdx = i;
+        highlight(i);
+        var rows = (data.items && data.items[i]) || [];
+        var total = data.values[i] || 0;
+        var html = '<div class="head"><span class="day">' + tips[i] + '</span>' +
+          (total > 0 ? '<span class="sum">' + fmtMoneyCents(total) + '</span>'
+                     : '<span class="zero">nothing spent</span>') + '</div>';
+        if (rows.length) {
+          // Biggest first: on a day with eight charges the two that matter are the two
+          // largest, and they should not be below a fold.
+          var sorted = rows.slice().sort(function(a, b) { return a.amount - b.amount; });
+          html += '<ul>' + sorted.slice(0, 5).map(function(t) {
+            return '<li><span>' + t.merchant + '</span><span>' + fmtMoneyCents(-t.amount) + '</span></li>';
+          }).join('') + '</ul>';
+          if (sorted.length > 5) {
+            html += '<div class="more">+ ' + (sorted.length - 5) + ' more</div>';
+          }
+        }
+        read.innerHTML = html;
+      }
+
+      function indexFromClientX(clientX) {
+        var box = svg.getBoundingClientRect();
+        if (!box.width) return -1;
+        // client px -> viewBox units, then into the plot area
+        var vb = (clientX - box.left) * (vbW / box.width);
+        var rel = (vb - padL) / plotW;
+        if (rel < 0) rel = 0;
+        if (rel > 1) rel = 1;
+        var i = Math.floor(rel * bars);
+        return i >= bars ? bars - 1 : i;
+      }
+
+      var dragging = false;
+      function handle(e) {
+        var i = indexFromClientX(e.clientX);
+        if (i >= 0) show(i);
+      }
+      svg.addEventListener('pointerdown', function(e) {
+        dragging = true;
+        if (svg.setPointerCapture) { try { svg.setPointerCapture(e.pointerId); } catch (err) {} }
+        handle(e);
+      });
+      svg.addEventListener('pointermove', function(e) {
+        // A mouse reads on hover; a finger only reads while it is down. Without the
+        // pointerType check, a touch would need a second tap to register at all.
+        if (dragging || e.pointerType === 'mouse') handle(e);
+      });
+      svg.addEventListener('pointerup', function() { dragging = false; });
+      svg.addEventListener('pointercancel', function() { dragging = false; });
+      // The reading deliberately PERSISTS after the finger lifts -- on a phone you lift
+      // to read it. Only a mouse leaving clears it.
+      svg.addEventListener('pointerleave', function(e) {
+        if (e.pointerType === 'mouse') { dragging = false; }
+      });
     }
 
     // The Month control writes into From/To rather than standing beside them as a
