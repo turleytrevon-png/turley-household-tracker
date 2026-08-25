@@ -484,6 +484,16 @@
     [/^QUANTUM FIBER$/i, 'Quantum Fiber'],
     [/^COX COMMUNICATIONS/i, 'Cox Communications'],
     [/^HERITAGE ACADEMY/i, 'Heritage Academy'],
+    // Apple is matched as the WHOLE string or as the .com billing form only -- NOT
+    // /^APPLE\b/, which was tried and rejected. \b keeps APPLEBEES out (the boundary
+    // fails against 'APPLEB') but happily eats 'APPLE VALLEY MARKET' -> 'Apple',
+    // because 'Apple' is an ordinary English word that turns up in place names. The
+    // four real descriptors are all covered: 'Apple', 'Apple.com Bill',
+    // 'APPLE.COM/BILL' and 'APPLE.COM/BILL CA' -- one vendor, $578.24.
+    [/^APPLE$|^APPLE\.COM/i, 'Apple'],
+    // 'Nintendo' is a coined brand, not a word, so a leading-boundary match is safe
+    // here in a way it is not for Apple. 'NINTENDOLAND' correctly does not match.
+    [/^NINTENDO\b/i, 'Nintendo'],
     // Before the Amazon rules: the descriptor is "PRIME VIDEO CHANNELS AMZN.COM/BILL",
     // which neither ^AMAZON nor ^AMZN matches, so it used to fall through to title-case.
     [/PRIME VIDEO/i, 'Prime Video'],
