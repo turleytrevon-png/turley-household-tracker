@@ -899,7 +899,10 @@
       chartTooltip.style.top = top + 'px';
     }
 
-    ['#page-spending', '#page-transactions'].forEach(function(sel) {
+    // Spending only. History has the scrub readout now, and the floating tooltip
+    // duplicated it while sitting ON TOP of the bars -- covering the data it was
+    // describing. The Spending charts have no readout, so they keep it.
+    ['#page-spending'].forEach(function(sel) {
       var host = $(sel);
       host.addEventListener('mousemove', function(e) {
         var seg = e.target.closest && e.target.closest('.bar-seg');
@@ -1311,14 +1314,16 @@
           (total > 0 ? '<span class="sum">' + fmtMoneyCents(total) + '</span>'
                      : '<span class="zero">nothing spent</span>') + '</div>';
         if (rows.length) {
-          // Biggest first: on a day with eight charges the two that matter are the two
-          // largest, and they should not be below a fold.
+          // EVERY transaction, biggest first. The cap at five was hiding rows on 76 of
+          // 228 days -- a third of them -- which made the readout unreliable exactly
+          // when it mattered most. The busiest day in the data is 13 items, about 309px,
+          // and it sits BELOW the chart, so length costs nothing the user is touching.
           var sorted = rows.slice().sort(function(a, b) { return a.amount - b.amount; });
-          html += '<ul>' + sorted.slice(0, 5).map(function(t) {
+          html += '<ul>' + sorted.map(function(t) {
             return '<li><span>' + displayMerchant(t.merchant) + '</span><span>' + fmtMoneyCents(-t.amount) + '</span></li>';
           }).join('') + '</ul>';
-          if (sorted.length > 5) {
-            html += '<div class="more">+ ' + (sorted.length - 5) + ' more</div>';
+          if (sorted.length > 1) {
+            html += '<div class="more">' + sorted.length + ' purchases</div>';
           }
         }
         read.innerHTML = html;
