@@ -484,6 +484,9 @@
     [/^QUANTUM FIBER$/i, 'Quantum Fiber'],
     [/^COX COMMUNICATIONS/i, 'Cox Communications'],
     [/^HERITAGE ACADEMY/i, 'Heritage Academy'],
+    // Before the Amazon rules: the descriptor is "PRIME VIDEO CHANNELS AMZN.COM/BILL",
+    // which neither ^AMAZON nor ^AMZN matches, so it used to fall through to title-case.
+    [/PRIME VIDEO/i, 'Prime Video'],
     [/^AMAZON|^AMZN/i, 'Amazon'],
     [/BOHME/i, 'Bohme'],
     [/^NELNET$/i, 'Nelnet']
@@ -504,7 +507,14 @@
     }).join(' ');
   }
 
-  function displayMerchant(raw) {
+  // Categories whose name IS the answer, regardless of what the bank wrote. Rent
+  // arrives under five different wordings ("Zelle to Brett", "Withdrawal Home MACU:
+  // Payment to ZELLE BRETT from AINSLEY REY LEAVITT.", ...) and text patterns would need
+  // a sixth next month. The category cannot drift.
+  var CATEGORY_NAME = { 'Rent/Housing': 'Rent' };
+
+  function displayMerchant(raw, category) {
+    if (category && CATEGORY_NAME[category]) return CATEGORY_NAME[category];
     var str = String(raw == null ? '' : raw), city = '';
     var m = str.match(/\s*\(([^)]*)\)\s*$/);
     if (m && /\b[A-Z]{2}\b/.test(m[1])) { city = ' (' + m[1] + ')'; str = str.slice(0, m.index); }
@@ -1138,7 +1148,7 @@
       return '<div class="txn-row">' +
         '<span class="who"' + (tint ? ' style="background:' + tint + '"' : '') + '></span>' +
         '<div class="txn-main">' +
-          '<div class="txn-merchant">' + displayMerchant(t.merchant) + '</div>' +
+          '<div class="txn-merchant">' + displayMerchant(t.merchant, t.category) + '</div>' +
           '<div class="txn-meta">' + t.date + ' · ' + badge + ' · ' + t.category + '</div>' +
         '</div>' +
         '<div class="txn-amount ' + cls + '">' + fmtMoney(t.amount) + '</div>' +
@@ -1314,16 +1324,26 @@
           (total > 0 ? '<span class="sum">' + fmtMoneyCents(total) + '</span>'
                      : '<span class="zero">nothing spent</span>') + '</div>';
         if (rows.length) {
-          // EVERY transaction, biggest first. The cap at five was hiding rows on 76 of
-          // 228 days -- a third of them -- which made the readout unreliable exactly
-          // when it mattered most. The busiest day in the data is 13 items, about 309px,
-          // and it sits BELOW the chart, so length costs nothing the user is touching.
-          var sorted = rows.slice().sort(function(a, b) { return a.amount - b.amount; });
-          html += '<ul>' + sorted.map(function(t) {
-            return '<li><span>' + displayMerchant(t.merchant) + '</span><span>' + fmtMoneyCents(-t.amount) + '</span></li>';
+          // EVERY transaction is accounted for, but rows that DISPLAY the same name on
+          // the same day merge into one line and sum. Two $750 Zelle transfers both
+          // reading "Rent" are one $1,500 event to a human, and the count keeps it
+          // honest -- nothing is hidden, it is grouped. Same for two Amazon charges.
+          var groups = {}, order = [];
+          rows.forEach(function(t) {
+            var name = displayMerchant(t.merchant, t.category);
+            if (!groups[name]) { groups[name] = { name: name, total: 0, n: 0 }; order.push(name); }
+            groups[name].total += -t.amount;
+            groups[name].n += 1;
+          });
+          var list = order.map(function(k) { return groups[k]; })
+                          .sort(function(a, b) { return b.total - a.total; });
+          html += '<ul>' + list.map(function(g) {
+            return '<li><span>' + g.name + (g.n > 1 ? ' \u00d7' + g.n : '') +
+                   '</span><span>' + fmtMoneyCents(g.total) + '</span></li>';
           }).join('') + '</ul>';
-          if (sorted.length > 1) {
-            html += '<div class="more">' + sorted.length + ' purchases</div>';
+          if (rows.length > 1) {
+            html += '<div class="more">' + rows.length + ' purchases' +
+                    (list.length !== rows.length ? ' in ' + list.length + ' lines' : '') + '</div>';
           }
         }
         read.innerHTML = html;
