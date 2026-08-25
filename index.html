@@ -953,29 +953,59 @@
       apiGet('dashboard').then(function(data) {
         if (data.error) { showToast('Could not load data: ' + data.error, true); return; }
         renderData(data);
+        // The dashboard endpoint returns kpis/goals/pooled and no rows, but two of the
+        // cards are derived from rows. Fetch them once into the same cache the History
+        // tab uses, so the grid completes and History later costs nothing. Failure is
+        // silent on purpose: the other six cards are already correct, and a toast would
+        // blame Home for a missing extra.
+        if (allTransactions.length) { renderKpiGrid(); return; }
+        apiGet('transactions').then(function(txns) {
+          if (txns && !txns.error && txns.length) { allTransactions = txns; renderKpiGrid(); }
+        }).catch(function() {});
       }).catch(function(err) {
         showToast('Could not load data: ' + err, true);
       });
     }
 
-    function renderData(data) {
-      $('#lastUpdated').textContent = data.kpis.lastUpdated || '';
+    // Held so the grid can re-render when the transaction rows arrive, with no
+    // second dashboard fetch.
+    var DASH = null;
 
-      var netClass = Number(data.kpis.netCashFlow) < 0 ? 'negative' : 'positive';
-      var checkClass = Number(data.kpis.checkingChange) < 0 ? 'negative' : 'positive';
+    function renderKpiGrid() {
+      if (!DASH) return;
+      var k = DASH.kpis;
+      var cf = cashFlowKpis(allTransactions);
+      var marginClass = Number(k.netCashFlow) < 0 ? 'negative' : 'positive';
+      var checkClass = Number(k.checkingChange) < 0 ? 'negative' : 'positive';
       // Home answers "how do we run, typically" — every figure here is a long-run
       // average or a standing balance. The Spending tab answers "what happened in
       // one month". Keeping the hero here and dropping it there is what stops the
       // two screens reading as the same screen twice.
+      //
+      // The hero is the SPENDING margin and now says so. It answers a real question
+      // ("does day-to-day spending fit our income") and was only wrong for as long as
+      // it claimed to be the bottom line. The bottom line is the card beside it.
       $('#kpiGrid').innerHTML =
-        kpiCard('Average monthly net', fmtMoney(data.kpis.netCashFlow), netClass,
-          'income minus everything, complete months only', 'kpi-hero') +
-        kpiCard('Avg monthly income', fmtMoney(data.kpis.avgIncome), 'positive') +
-        kpiCard('Avg monthly spend', fmtMoney(data.kpis.avgSpend), '') +
-        kpiCard('Card utilization', data.kpis.cardUtilization, '',
-          fmtMoney(data.kpis.cardBalance) + ' of ' + fmtMoney(data.kpis.cardLimit)) +
-        kpiCard('Checking change', fmtMoney(data.kpis.checkingChange), checkClass, 'year to date') +
-        kpiCard('Top variable spend', data.kpis.topCategory, 'is-text', 'fixed costs excluded', 'kpi-wide');
+        kpiCard('Monthly spending margin', fmtMoney(k.netCashFlow), marginClass,
+          'income minus day-to-day spending', 'kpi-hero') +
+        kpiCard('After savings &amp; debt', cf ? fmtMoney(cf.drain) : '&middot;&middot;&middot;',
+          cf ? (cf.drain < 0 ? 'negative' : 'positive') : '',
+          'what actually leaves checking') +
+        kpiCard('Moved, not spent', cf ? fmtMoney(cf.moved) : '&middot;&middot;&middot;',
+          'positive', 'savings + loan principal &mdash; still yours') +
+        kpiCard('Avg monthly income', fmtMoney(k.avgIncome), 'positive') +
+        kpiCard('Avg monthly spend', fmtMoney(k.avgSpend), '') +
+        kpiCard('Card utilization', k.cardUtilization, '',
+          fmtMoney(k.cardBalance) + ' of ' + fmtMoney(k.cardLimit)) +
+        kpiCard('Checking change', fmtMoney(k.checkingChange), checkClass, 'year to date') +
+        kpiCard('Top variable spend', k.topCategory, 'is-text', 'fixed costs excluded', 'kpi-wide');
+    }
+
+    function renderData(data) {
+      $('#lastUpdated').textContent = data.kpis.lastUpdated || '';
+
+      DASH = data;
+      renderKpiGrid();
 
       $('#pooledCard').innerHTML =
         '<p><span class="label">Seed balance</span><span>' + fmtMoney(data.pooled.seedBalance) + '</span></p>' +
@@ -1529,6 +1559,55 @@
       // excluded, the interest is counted, and together they ARE the payment.
       'Card Debt Paydown': true
     };
+
+    // Money that LEAVES CHECKING but is still ours afterwards. A savings transfer is
+    // not a loss, and neither is retiring principal on the Lexus or on card 9044 --
+    // Trevon's own correction: "stuff in the savings account should still be counted
+    // as our money".
+    //
+    // 'Credit Card Payments' and 'Card Payment' are deliberately NOT here. They settle
+    // card spending already counted the moment it was swiped, so subtracting them too
+    // double-counts. Doing that produced a bogus -$4,171/mo against a real -$582/mo.
+    // If you are tempted to add them, that is the trap.
+    var CASH_MOVED = {
+      'Internal Savings Transfer': true,
+      'Auto Loan Payment': true,
+      'Credit Line Payment': true,
+      'Card Debt Paydown': true
+    };
+
+    // Three honest numbers in place of one misleading one. The old single card read
+    // "Average monthly net -- income minus everything", and it was not income minus
+    // everything: it ignored every CASH_MOVED category, overstating the month by $720.
+    //
+    // The complete-months-only logic is copied from computeKpis_ in WebApp.gs ON
+    // PURPOSE. If that changes, change it here too, or Home disagrees with itself.
+    function cashFlowKpis(txns) {
+      if (!txns || !txns.length) return null;
+      var maxDate = '';
+      txns.forEach(function(t) { if (t.date > maxDate) maxDate = t.date; });
+      if (!maxDate) return null;
+      var currentMonth = maxDate.slice(0, 7);
+      var lastDay = new Date(Number(maxDate.slice(0, 4)), Number(maxDate.slice(5, 7)), 0).getDate();
+      var monthIsComplete = Number(maxDate.slice(8, 10)) >= lastDay;
+
+      var months = {}, income = 0, spend = 0, moved = 0;
+      txns.forEach(function(t) {
+        var m = t.date.slice(0, 7);
+        if (!(monthIsComplete || m !== currentMonth)) return;
+        months[m] = true;
+        if (t.account === 'checking' && t.category === 'Income') income += t.amount;
+        else if (CASH_MOVED[t.category]) moved += t.amount;
+        else if (t.amount < 0 && !NON_SPEND[t.category]) spend += -t.amount;
+      });
+      var n = Math.max(1, Object.keys(months).length);
+      var margin = (income - spend) / n;
+      // `moved` is signed and NET, so a withdrawal back out of savings offsets a
+      // deposit. Filtering to amount < 0 instead reported -$668/mo by ignoring a
+      // single $600 withdrawal.
+      var movedPerMonth = moved / n;
+      return { margin: margin, moved: -movedPerMonth, drain: margin + movedPerMonth, months: n };
+    }
 
     function monthLabel(key) {
       var parts = key.split('-');
