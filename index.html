@@ -165,6 +165,13 @@
   .pooled-card p:last-of-type { border-bottom: none; }
   .pooled-card .label { color: var(--muted); }
   .reconcile { margin: var(--s2) 0 var(--s3); padding: var(--s3); border-radius: var(--r-ctl); background: var(--panel-2); font-size: 13px; color: var(--muted); }
+  /* Three states, because they ARE three different conditions. The old sheet formula
+     wrapped the delta in ABS(), so "money nobody has assigned yet" and "the app is
+     claiming money that does not exist" printed the same string in the same grey. The
+     first is a to-do; the second is the app being wrong about savings. */
+  .reconcile.is-balanced { color: #34d399; }
+  .reconcile.is-unallocated { border-left: 3px solid #fbbf24; }
+  .reconcile.is-over { color: #f87171; border-left: 3px solid #f87171; }
 
   /* --- Charts ------------------------------------------------------------- */
   .chart-card { padding: var(--s4); margin-bottom: var(--s3); }
@@ -1017,12 +1024,26 @@
       DASH = data;
       renderKpiGrid();
 
+      // `unallocated` is SIGNED and `status` is an enum, both added server-side in v21.
+      // Falls back to the old reconciliation string, so this renders correctly against a
+      // server that has NOT been redeployed yet -- which is the state it ships in.
+      var pl = data.pooled || {};
+      var st = pl.status || '';
+      var hasSigned = typeof pl.unallocated === 'number';
       $('#pooledCard').innerHTML =
-        '<p><span class="label">Seed balance</span><span>' + fmtMoney(data.pooled.seedBalance) + '</span></p>' +
-        '<p><span class="label">Internal transfers</span><span>' + fmtMoney(data.pooled.runningTransfers) + '</span></p>' +
-        '<p><span class="label">Total pooled balance</span><span><strong>' + fmtMoney(data.pooled.totalBalance) + '</strong></span></p>' +
-        '<p><span class="label">Total allocated</span><span>' + fmtMoney(data.pooled.totalAllocated) + '</span></p>' +
-        '<div class="reconcile">' + data.pooled.reconciliation + '</div>';
+        '<p><span class="label">Seed balance</span><span>' + fmtMoney(pl.seedBalance) + '</span></p>' +
+        (pl.seedAsOf ? '<p><span class="label">Seed as of</span><span>' + pl.seedAsOf + '</span></p>' : '') +
+        '<p><span class="label">Internal transfers</span><span>' + fmtMoney(pl.runningTransfers) + '</span></p>' +
+        '<p><span class="label">Total pooled balance</span><span><strong>' + fmtMoney(pl.totalBalance) + '</strong></span></p>' +
+        '<p><span class="label">Total allocated</span><span>' + fmtMoney(pl.totalAllocated) + '</span></p>' +
+        (hasSigned
+          ? '<p><span class="label">' + (pl.unallocated < 0 ? 'Over-allocated by' : 'Not yet assigned') + '</span>' +
+            '<span class="' + (pl.unallocated < 0 ? 'negative' : '') + '">' + fmtMoney(Math.abs(pl.unallocated)) + '</span></p>'
+          : '') +
+        '<div class="reconcile' + (st ? ' is-' + st : '') + '">' + (pl.message || pl.reconciliation || '') + '</div>' +
+        (pl.legacyLayout
+          ? '<div class="reconcile is-unallocated">Legacy Goals!B10 layout \u2014 run migrateGoalsV21 to move the seed onto its own tab.</div>'
+          : '');
 
       $('#goalsList').innerHTML = data.goals.map(function(g) {
         var hasTarget = g.target !== '' && g.target !== null;
