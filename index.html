@@ -223,11 +223,11 @@
      been caught by the same trap: a display: rule on the element beats a bare
      [hidden], so the attribute silently stops working. This settles it everywhere. */
   [hidden] { display: none !important; }
-  /* The scrub readout. Pinned ABOVE the bars, never under the finger -- a tooltip that
-     follows your thumb on a phone is a tooltip you are covering up. Fixed min-height so
-     the chart does not jump as lines appear and disappear. */
+  /* The scrub readout. BELOW the bars: it grows as line items appear, and above the
+     chart that growth pushed the chart down while a finger was still on it. Below, the
+     chart's position is fixed no matter how tall this gets. */
   .scrub { background: var(--panel-2); border-radius: var(--r-ctl); padding: var(--s3) var(--s4);
-           margin-bottom: var(--s3); min-height: 62px; }
+           margin-top: var(--s3); min-height: 62px; }
   .scrub .hint { color: var(--faint); font-size: 12px; }
   .scrub .head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
   .scrub .day { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
@@ -459,6 +459,82 @@
     var sign = n < 0 ? '-' : '';
     if (a >= 1000) return sign + '$' + (a / 1000).toFixed(a >= 10000 ? 0 : 1) + 'k';
     return sign + '$' + a.toFixed(0);
+  }
+
+  // ---- Merchant display names ------------------------------------------------
+  // DISPLAY ONLY. The Sheet keeps the bank's raw descriptor, because that is the only
+  // evidence of what the bank actually said. 132 of 1,255 rows carry bank plumbing in
+  // the name and average 84 characters against 22 for the clean ones; the worst is 147.
+  //
+  // The payee is almost always whatever CO: or COMPANY: names -- everything else in an
+  // ACH descriptor is routing detail. NAME: is the PAYER, not the payee, so it is
+  // dropped: it is already in the Person column and repeating it here is noise.
+  var MERCHANT_ALIAS = [
+    // Bank truncations and house style. Generic stripping cannot fix these -- only a
+    // map knows that "Mesa Community C" is a cut-off word and "SAMSCLUB" is one vendor.
+    [/^TARGET( DEBIT CRD)?$/i, 'Target'],
+    [/^SAM.?S ?CLUB$|^SAMSCLUB$/i, "Sam's Club"],
+    [/^MESA COMMUNITY C/i, 'Mesa Community College'],
+    [/^TOWN OF QUEEN CR$/i, 'Town of Queen Creek'],
+    [/^DEPT EDUCATION$/i, 'Dept of Education'],
+    [/^MARICOPA AMBULAN/i, 'Maricopa Ambulance'],
+    [/MAC\.BID/i, 'Mac.bid'],
+    [/^CAPITAL ONE$/i, 'Capital One'],
+    [/^LIBERTY MUTUAL$/i, 'Liberty Mutual'],
+    [/^QUANTUM FIBER$/i, 'Quantum Fiber'],
+    [/^COX COMMUNICATIONS/i, 'Cox Communications'],
+    [/^HERITAGE ACADEMY/i, 'Heritage Academy'],
+    [/^AMAZON|^AMZN/i, 'Amazon'],
+    [/BOHME/i, 'Bohme'],
+    [/^NELNET$/i, 'Nelnet']
+    // NOTE: no /^ZELLE/ rule. It matched "Zelle to Brett" and threw away "to Brett",
+    // which is the only part that says who was paid.
+  ];
+  var SMALL_WORDS = { of: 1, the: 1, and: 1, to: 1, at: 1, 'in': 1, on: 1, 'for': 1, a: 1, an: 1 };
+
+  function titleCaseName(str) {
+    // Anything with odd punctuation is left shouting. Title-casing "SP+AFF BOHME LLC"
+    // produces "Sp+aff Bohme Llc", which is worse than the original.
+    if (/[+*#&\/]/.test(str)) return str;
+    return str.split(' ').map(function(w, i) {
+      var lw = w.toLowerCase();
+      if (i > 0 && SMALL_WORDS[lw]) return lw;
+      if (w.length <= 3 && w === w.toUpperCase() && /^[A-Za-z]+$/.test(w)) return w;  // SRP, LLC, TJ
+      return w === w.toUpperCase() ? w.charAt(0) + w.slice(1).toLowerCase() : w;
+    }).join(' ');
+  }
+
+  function displayMerchant(raw) {
+    var str = String(raw == null ? '' : raw), city = '';
+    var m = str.match(/\s*\(([^)]*)\)\s*$/);
+    if (m && /\b[A-Z]{2}\b/.test(m[1])) { city = ' (' + m[1] + ')'; str = str.slice(0, m.index); }
+
+    var co = str.match(/(?:\bCO:|\bCOMPANY:)\s*([\s\S]+?)(?=\s+(?:NAME:|ENTRY:|TYPE:|Entry Class|ACH Trace|Terminal ID)|$)/i);
+    if (co) {
+      str = co[1];
+    } else {
+      str = str.replace(/^\s*(?:Withdrawal|Deposit|Debit Withdrawal|Home banking|Mobile banking)\s+/i, '')
+               .replace(/^\s*ACH\s+(?:Withdrawal|Deposit)\s+/i, '')
+               .replace(/^\s*ACH\s+[A-Z]{1,4}\b\s*/, '')
+               .replace(/\bLocation\s*-\s*/i, '');
+    }
+    str = str.replace(/\bEntry Class Code[\s\S]*$/i, ' ')
+             .replace(/\bACH Trace Number[\s\S]*$/i, ' ')
+             .replace(/\bTerminal ID:\s*\S*/i, ' ')
+             .replace(/\bTYPE:\s*\S+\s*/i, ' ')
+             .replace(/\bENTRY:\s*\S+\s*/i, ' ')
+             .replace(/\bNAME:[\s\S]*$/i, ' ')
+             .replace(/\bCOMMENT:\s*/i, ' ')
+             .replace(/\bDate XX\b/i, ' ')
+             .replace(/\bTrace Number:?\s*\d*/i, ' ')
+             .replace(/\s*\/\s*/g, ' ')
+             .replace(/\s{2,}/g, ' ')
+             .replace(/^[\s\-\/:,]+|[\s\-\/:,]+$/g, '');
+    for (var i = 0; i < MERCHANT_ALIAS.length; i++) {
+      if (MERCHANT_ALIAS[i][0].test(str)) { str = MERCHANT_ALIAS[i][1]; break; }
+      if (i === MERCHANT_ALIAS.length - 1) str = titleCaseName(str);
+    }
+    return str ? (str + city) : String(raw);
   }
 
   function attrEscape(s) { return String(s).replace(/"/g, '&quot;'); }
@@ -1059,7 +1135,7 @@
       return '<div class="txn-row">' +
         '<span class="who"' + (tint ? ' style="background:' + tint + '"' : '') + '></span>' +
         '<div class="txn-main">' +
-          '<div class="txn-merchant">' + t.merchant + '</div>' +
+          '<div class="txn-merchant">' + displayMerchant(t.merchant) + '</div>' +
           '<div class="txn-meta">' + t.date + ' · ' + badge + ' · ' + t.category + '</div>' +
         '</div>' +
         '<div class="txn-amount ' + cls + '">' + fmtMoney(t.amount) + '</div>' +
@@ -1184,11 +1260,15 @@
       var tips = oneMonth ? d.labels.map(function(day) { return shortMonth(oneMonth) + ' ' + day; })
                           : d.labels.slice();
       host.innerHTML = chartCard(title, note,
-        '<div class="scrub" id="txnScrub"><div class="hint">Drag across the chart to read a ' +
-          (oneMonth ? 'day' : 'month') + '.</div></div>' +
         buildBarChart(d.labels, [{ name: label, color: SPARK_COLOR, values: d.values }],
           { height: 190, labelEvery: d.labels.length > 20 ? 5 : (d.labels.length > 8 ? 2 : 1),
-            barFactor: 0.95, tipLabels: tips })) +
+            barFactor: 0.95, tipLabels: tips }) +
+        // BELOW the bars, not above. Above, the readout grew from 62px to 155px as line
+        // items appeared and pushed the chart DOWN while a finger was still on it -- the
+        // thing being scrubbed moved out from under the finger. Below the chart, the
+        // chart cannot move at all.
+        '<div class="scrub" id="txnScrub"><div class="hint">Drag across the chart to read a ' +
+          (oneMonth ? 'day' : 'month') + '.</div></div>') +
         '<div class="txn-count">' + fmtMoney(d.total) + ' total across ' + d.count +
           (d.count === 1 ? ' outflow' : ' outflows') + '</div>';
       attachScrub(host, d, tips);
@@ -1235,7 +1315,7 @@
           // largest, and they should not be below a fold.
           var sorted = rows.slice().sort(function(a, b) { return a.amount - b.amount; });
           html += '<ul>' + sorted.slice(0, 5).map(function(t) {
-            return '<li><span>' + t.merchant + '</span><span>' + fmtMoneyCents(-t.amount) + '</span></li>';
+            return '<li><span>' + displayMerchant(t.merchant) + '</span><span>' + fmtMoneyCents(-t.amount) + '</span></li>';
           }).join('') + '</ul>';
           if (sorted.length > 5) {
             html += '<div class="more">+ ' + (sorted.length - 5) + ' more</div>';
