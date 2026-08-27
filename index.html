@@ -160,6 +160,27 @@
   .bar-fill.good { background: var(--pos); }
   .goal-note { font-size: 12px; color: var(--faint); margin-top: var(--s2); }
 
+  /* --- Weekly breakdown ----------------------------------------------------
+     Collapsed by default: the monthly card is what it always was, and the weeks
+     cost nothing until asked for. Only offered on budgets whose categories are
+     actually transacted several times a week -- see WEEKLY_MIN_PER_WEEK. */
+  .wk-toggle { margin-top: var(--s2); background: none; border: none; padding: 0;
+    color: var(--accent); font-size: 12px; font-weight: 500; letter-spacing: -0.01em; }
+  .wk-panel { margin-top: var(--s3); }
+  .wk-lead { font-size: 13px; color: var(--text); font-weight: 600; margin-bottom: var(--s2); }
+  .wk-lead .sub { font-weight: 500; color: var(--muted); }
+  .wk-row { display: flex; align-items: center; gap: var(--s3); font-size: 12px;
+    color: var(--muted); margin-top: 5px; }
+  .wk-row .lab { flex: 0 0 68px; font-variant-numeric: tabular-nums; }
+  .wk-row .amt { flex: 0 0 96px; text-align: right; font-variant-numeric: tabular-nums; }
+  .wk-row .mini { flex: 1 1 auto; height: 5px; border-radius: 3px;
+    background: rgba(255,255,255,0.08); overflow: hidden; }
+  .wk-row .mini i { display: block; height: 100%; border-radius: 3px; background: var(--pos); }
+  .wk-row.over .amt { color: var(--neg); }
+  .wk-row.over .mini i { background: var(--neg); }
+  .wk-row.now .lab, .wk-row.now .amt { color: var(--text); font-weight: 600; }
+  .wk-row.future { opacity: 0.45; }
+
   /* --- Pooled savings ----------------------------------------------------- */
   .pooled-card p { display: flex; justify-content: space-between; margin: 0; padding: var(--s3) 0; font-size: 15px; border-bottom: 1px solid var(--hair); }
   .pooled-card p:last-of-type { border-bottom: none; }
@@ -1991,6 +2012,59 @@
     // The 25% headroom keeps the tick off the right edge when under budget, where
     // it would otherwise be flush with the end of the track and invisible.
     // Its own function so the maths can be tested without a DOM.
+    // A budget earns the weekly option by being TRANSACTED weekly. Rent is one row a
+    // month; a weekly rent figure is a number with nothing behind it. Measured over
+    // the whole loaded window, not per month: on this household Groceries touches
+    // 4.0/wk in June while Shopping dips to 3.8 in January, so a per-month test would
+    // make the control flicker on and off. Over the full window the gap is wide and
+    // stable -- Groceries 2.7, Shopping 6.6, Dining 9.7.
+    var WEEKLY_MIN_PER_WEEK = 4;
+
+    function txnsPerWeek(cats, person) {
+      var keys = sortedMonthKeys();
+      if (!keys.length) return 0;
+      var n = 0, days = 0;
+      keys.forEach(function(k) {
+        days += new Date(Number(k.slice(0, 4)), Number(k.slice(5, 7)), 0).getDate();
+      });
+      allTransactions.forEach(function(t) {
+        if (t.amount >= 0) return;
+        if (cats.indexOf(t.category) === -1) return;
+        if (person && t.person !== person) return;
+        n++;
+      });
+      return days ? n / (days / 7) : 0;
+    }
+
+    // Day-of-month blocks: 1-7, 8-14, 15-21, 22-28, 29-end. They TILE the month
+    // exactly, so the week targets sum back to the monthly target with no remainder
+    // and no invented money -- $158.06 x 4 + $67.74 = $700.00. Calendar weeks would
+    // straddle month boundaries and break that.
+    function monthWeekBlocks(monthKey) {
+      var dim = new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5, 7)), 0).getDate();
+      var out = [], start = 1;
+      while (start <= dim) {
+        var end = Math.min(start + 6, dim);
+        out.push({ start: start, end: end, days: end - start + 1, dim: dim });
+        start = end + 1;
+      }
+      return out;
+    }
+
+    function weekCategoryTotal(monthKey, b, cats, person) {
+      var total = 0;
+      allTransactions.forEach(function(t) {
+        if (t.date.slice(0, 7) !== monthKey) return;
+        if (t.amount >= 0) return;
+        if (cats.indexOf(t.category) === -1) return;
+        if (person && t.person !== person) return;
+        var d = Number(t.date.slice(8, 10));
+        if (d < b.start || d > b.end) return;
+        total += -t.amount;
+      });
+      return total;
+    }
+
     function budgetBarGeometry(actual, target) {
       var scaleMax = Math.max(target * 1.25, actual);
       if (!(scaleMax > 0)) return { barPct: 0, targetPct: 0, showTick: false };
@@ -2036,7 +2110,7 @@
         return;
       }
 
-      host.innerHTML = defs.map(function(b) {
+      host.innerHTML = defs.map(function(b, idx) {
         var target = personFilter ? b.perPerson : b.monthly;
         var actual, basis;
         if (b.method === 'avg3') {
@@ -2063,7 +2137,13 @@
         if (basis) notes.push(basis);
         if (b.note) notes.push(b.note);
 
-        return '<div class="card goal-card">' +
+        // The weekly breakdown is offered only where the spending actually happens
+        // several times a week, and never on an avg3 basis -- a trailing three-month
+        // average has no week to belong to.
+        var weekly = b.method !== 'avg3' &&
+                     txnsPerWeek(b.categories, personFilter) >= WEEKLY_MIN_PER_WEEK;
+
+        return '<div class="card goal-card"' + (weekly ? ' data-wk="' + idx + '"' : '') + '>' +
           '<div class="row"><span class="name">' + b.name + '</span>' +
           '<span class="amounts">' + fmtMoney(actual) + ' / ' + fmtMoney(target) + '</span></div>' +
           '<div class="bar-track' + (geo.showTick ? ' with-target' : '') + '">' +
@@ -2072,8 +2152,94 @@
             (geo.showTick ? '<div class="bar-target" style="left:' + geo.targetPct.toFixed(1) + '%"></div>' : '') +
           '</div>' +
           '<div class="goal-note">' + notes.join(' \u00b7 ') + '</div>' +
+          (weekly ? '<button class="wk-toggle" data-wk-btn="' + idx + '">Week by week \u203a</button>' +
+                    '<div class="wk-panel" id="wkPanel' + idx + '" hidden></div>' : '') +
           '</div>';
       }).join('');
+
+      attachWeekly(defs, monthKey, partial);
+    }
+
+    // ---- Weekly breakdown ---------------------------------------------------
+    // Collapsed by default, so the monthly card is untouched until someone asks.
+    function attachWeekly(defs, monthKey, partial) {
+      $all('#budgetList .wk-toggle').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var idx = Number(btn.dataset.wkBtn);
+          var panel = document.getElementById('wkPanel' + idx);
+          if (!panel) return;
+          var open = !panel.hidden;
+          if (open) { panel.hidden = true; btn.textContent = 'Week by week \u203a'; return; }
+          panel.innerHTML = weeklyPanelHtml(defs[idx], monthKey, partial);
+          panel.hidden = false;
+          btn.textContent = 'Hide weeks \u2039';
+        });
+      });
+    }
+
+    function weeklyPanelHtml(b, monthKey, partial) {
+      var target = personFilter ? b.perPerson : b.monthly;
+      var blocks = monthWeekBlocks(monthKey);
+      var today = new Date();
+      var isCurrent = partial && monthKey === todayKey_();
+      var dayNow = isCurrent ? today.getDate() : blocks[blocks.length - 1].end;
+
+      var rows = blocks.map(function(bk) {
+        var spend = weekCategoryTotal(monthKey, bk, b.categories, personFilter);
+        // Pro-rated by DAYS, so a short final block gets a short target and the
+        // five week targets still sum to the month's.
+        var wkTarget = target * bk.days / bk.dim;
+        var started = bk.start <= dayNow;
+        var current = started && bk.end >= dayNow;
+        var pct = wkTarget > 0 ? Math.min(100, (spend / wkTarget) * 100) : (spend > 0 ? 100 : 0);
+        var over = wkTarget > 0 ? spend > wkTarget + 0.005 : spend > 0.005;
+        var cls = (!started ? 'future' : (current ? 'now' : '')) + (started && over ? ' over' : '');
+        return '<div class="wk-row ' + cls + '">' +
+          '<span class="lab">' + shortMonth(monthKey) + ' ' + bk.start + '\u2013' + bk.end + '</span>' +
+          '<span class="mini"><i style="width:' + pct.toFixed(0) + '%"></i></span>' +
+          // Both sides rounded. A week row is read at a glance and $307.61 / $113
+          // makes the eye do a unit conversion mid-line; the month card above uses
+          // fmtMoney on both halves for the same reason.
+          '<span class="amt">' + (started ? fmtMoney(spend) : '\u2014') +
+            ' / ' + fmtMoney(wkTarget) + '</span></div>';
+      });
+
+      // The headline is a DECISION, not a report -- what is left in the block you
+      // are standing in, and what that is per day for the days still in it.
+      var lead = '';
+      if (isCurrent) {
+        var cur = null;
+        blocks.forEach(function(bk) { if (bk.start <= dayNow && bk.end >= dayNow) cur = bk; });
+        if (cur) {
+          var spent = weekCategoryTotal(monthKey, cur, b.categories, personFilter);
+          var wkT = target * cur.days / cur.dim;
+          var left = wkT - spent;
+          var daysLeft = cur.end - dayNow + 1;
+          lead = left >= 0
+            ? '<div class="wk-lead">' + fmtMoneyCents(left) + ' left this week' +
+              (daysLeft > 0 ? '<span class="sub"> \u00b7 ' + fmtMoney(left / daysLeft) + '/day for ' +
+                daysLeft + (daysLeft === 1 ? ' day' : ' days') + '</span>' : '') + '</div>'
+            : '<div class="wk-lead">' + fmtMoneyCents(-left) + ' over for this week' +
+              '<span class="sub"> \u00b7 ' + daysLeft + (daysLeft === 1 ? ' day' : ' days') + ' still to go</span></div>';
+        }
+      }
+
+      // Never let the blocks imply a total they do not make. This states the sum
+      // outright so it can be checked against the monthly card above it.
+      var sumSpent = 0, sumTarget = 0;
+      blocks.forEach(function(bk) {
+        if (bk.start <= dayNow) sumSpent += weekCategoryTotal(monthKey, bk, b.categories, personFilter);
+        sumTarget += target * bk.days / bk.dim;
+      });
+      var foot = '<div class="goal-note">' + blocks.length + ' blocks \u00b7 ' +
+        fmtMoneyCents(sumSpent) + ' so far of ' + fmtMoney(sumTarget) + ' for the month</div>';
+
+      return lead + rows.join('') + foot;
+    }
+
+    function todayKey_() {
+      var d = new Date();
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
     }
 
     // Hidden until the data can actually attribute a row to somebody. Every row
