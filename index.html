@@ -338,6 +338,19 @@
      state the box keeps its heading and shows one quiet line instead. */
   #gate .gate-wait { display: none; color: var(--muted); font-size: 14px; }
   #gate.checking .gate-wait { display: block; }
+  #gate .gate-wait .main { color: var(--text); font-size: 15px; font-weight: 500; }
+  #gate .gate-wait .sub { margin-top: var(--s2); font-size: 13px; color: var(--faint); }
+
+  /* Hand-rolled, like every other visual in this file -- a spinner is one border
+     and one rotation, and pulling in a library for it would be the only external
+     dependency on the page. */
+  .spinner { width: 26px; height: 26px; margin: 0 auto var(--s4);
+    border: 2.5px solid rgba(255,255,255,0.12); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* Slowed rather than stopped: a still ring reads as a broken spinner, and the
+     whole job of this thing is to say the app has not hung. */
+  @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.6s; } }
   #gate.checking p,
   #gate.checking input,
   #gate.checking button,
@@ -352,7 +365,11 @@
   <input type="password" id="gate-input" placeholder="Passphrase" autocomplete="off">
   <button type="button" id="gate-submit">Unlock</button>
   <div class="gate-error" id="gate-error"></div>
-  <div class="gate-wait" id="gate-wait">Signing you in&hellip;</div>
+  <div class="gate-wait" id="gate-wait">
+    <div class="spinner" aria-hidden="true"></div>
+    <div class="main">Signing you in&hellip;</div>
+    <div class="sub">Refreshing for current data</div>
+  </div>
 </div>
 
 <div id="app">
