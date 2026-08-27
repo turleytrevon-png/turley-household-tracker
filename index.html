@@ -1407,6 +1407,14 @@
       var baseFill = SPARK_COLOR;
       var lastIdx = -1;
 
+      // A DAY bar holds a handful of rows; a MONTH bar holds about 140, which grouped
+      // by name is still up to 129 lines. Rendering all of them turned a tap into a
+      // wall of text that read as the entire transaction history rather than as one
+      // bar's contents. keys[] is populated only in monthly mode, so it is the mode
+      // flag we already have.
+      var MONTHLY = !!(data.keys && data.keys.length);
+      var LINE_CAP = 10;
+
       function highlight(i) {
         for (var k = 0; k < rects.length; k++) {
           rects[k].setAttribute('fill', k === i ? SPARK_HILITE : baseFill);
@@ -1436,10 +1444,23 @@
           });
           var list = order.map(function(k) { return groups[k]; })
                           .sort(function(a, b) { return b.total - a.total; });
-          html += '<ul>' + list.map(function(g) {
+          // Cap the list on month bars only. Biggest first, so the cut falls on the
+          // small stuff. Day bars are short enough to show whole and always were.
+          var shown = (MONTHLY && list.length > LINE_CAP) ? list.slice(0, LINE_CAP) : list;
+          var hidden = list.length - shown.length;
+          html += '<ul>' + shown.map(function(g) {
             return '<li><span>' + g.name + (g.n > 1 ? ' \u00d7' + g.n : '') +
                    '</span><span>' + fmtMoneyCents(g.total) + '</span></li>';
           }).join('') + '</ul>';
+          // Never let the cap hide money silently -- name the rest and total it, so
+          // the lines on screen plus this footer still account for the bar.
+          if (hidden > 0) {
+            var rest = 0;
+            for (var h = shown.length; h < list.length; h++) rest += list[h].total;
+            html += '<div class="more">+ ' + hidden + ' smaller ' +
+                    (hidden === 1 ? 'line' : 'lines') + ' \u00b7 ' + fmtMoneyCents(rest) +
+                    '</div>';
+          }
           if (rows.length > 1) {
             html += '<div class="more">' + rows.length + ' purchases' +
                     (list.length !== rows.length ? ' in ' + list.length + ' lines' : '') + '</div>';
