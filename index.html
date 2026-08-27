@@ -2140,8 +2140,14 @@
         // The weekly breakdown is offered only where the spending actually happens
         // several times a week, and never on an avg3 basis -- a trailing three-month
         // average has no week to belong to.
+        // Qualify on the HOUSEHOLD count, deliberately not the filtered one. Whether a
+        // category is spent daily is a property of the category, not of who is being
+        // looked at -- and person-scoped counts fall under the threshold for both cards
+        // (Shopping 6.03/wk household but 0.13 for Trevon), so filtering by person made
+        // the control vanish entirely. The PANEL still respects the filter; only the
+        // decision to offer it is household-wide.
         var weekly = b.method !== 'avg3' &&
-                     txnsPerWeek(b.categories, personFilter) >= WEEKLY_MIN_PER_WEEK;
+                     txnsPerWeek(b.categories, '') >= WEEKLY_MIN_PER_WEEK;
 
         return '<div class="card goal-card"' + (weekly ? ' data-wk="' + idx + '"' : '') + '>' +
           '<div class="row"><span class="name">' + b.name + '</span>' +
@@ -2234,7 +2240,33 @@
       var foot = '<div class="goal-note">' + blocks.length + ' blocks \u00b7 ' +
         fmtMoneyCents(sumSpent) + ' so far of ' + fmtMoney(sumTarget) + ' for the month</div>';
 
-      return lead + rows.join('') + foot;
+      // VERTICAL BARS, in dollars, above the rows. The horizontal mini-bars answer
+      // "did this week beat its target" and cap at 100%, which means four over-target
+      // weeks all render identically -- on Shopping, $308 and $1,001 looked the same.
+      // These are scaled to the largest week instead, so magnitude is visible; the two
+      // together give vs-target AND how-much. Colour still marks over-target.
+      var started = blocks.filter(function(bk) { return bk.start <= dayNow; });
+      var chart = '';
+      if (started.length > 1) {
+        var vals = started.map(function(bk) {
+          return weekCategoryTotal(monthKey, bk, b.categories, personFilter);
+        });
+        var tgts = started.map(function(bk) { return target * bk.days / bk.dim; });
+        // color() is called once per bar, in order, by the single forEach inside
+        // buildBarChart -- so a counter lines each bar up with its own week's target.
+        // Values alone cannot: two weeks can spend the same amount against different
+        // targets when the final block is short.
+        var ci = 0;
+        chart = buildBarChart(
+          started.map(function(bk) { return String(bk.start); }),
+          [{ name: b.name, values: vals,
+             color: function(v) { var t = tgts[ci++]; return v > t + 0.005 ? 'var(--neg)' : 'var(--pos)'; } }],
+          { height: 132, barFactor: 0.7, labelEvery: 1,
+            tipLabels: started.map(function(bk) {
+              return shortMonth(monthKey) + ' ' + bk.start + '\u2013' + bk.end; }) });
+      }
+
+      return lead + chart + rows.join('') + foot;
     }
 
     function todayKey_() {
