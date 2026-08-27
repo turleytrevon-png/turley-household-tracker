@@ -41,8 +41,8 @@
 
     /* Who swiped the card. Deliberately NOT --accent, which already means "tappable" --
        a row tinted with the link colour reads as interactive when it is not. */
-    --paid-trevon: #4d8dff;
-    --paid-ainsley: #ff7ac0;
+    --paid-1: #4d8dff;
+    --paid-2: #ff7ac0;
 
     --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
     --r-ctl: 12px; --r-panel: 18px; --r-pill: 999px;
@@ -439,6 +439,33 @@
 <script>
   var API_URL = 'https://script.google.com/macros/s/AKfycbyLQlKJ44WRm8Zc0ctkj1K3lqpghG0s0wKRkeEbKEaYI--igmSFpfxjw3-GcA42vG4X1Q/exec';
   var PASS_KEY = 'turley_pass';
+
+  // ONE PLACE FOR THE HOUSEHOLD NAME. It was typed into three separate spots in
+  // the markup above -- the <title>, the <h1> and the iOS home-screen meta -- so
+  // renaming the app meant editing three places and knowing which three.
+  //
+  // Overridable from localStorage and defaulted to the current value, so this
+  // change is invisible here and nothing about Trevon's install moves.
+  //
+  // THE DEFAULT IS THE PART STILL UNSOLVED, and it is worth being plain about:
+  // this site is served to every household from ONE GitHub Pages build, so a
+  // build-time default cannot be correct for more than one of them. The real fix
+  // is the one the migration plan already specifies for API_URL -- promote it to
+  // a setup field, entered once and stored per browser. This gives that field
+  // somewhere to write to; it does not replace it.
+  var HOUSEHOLD_NAME_KEY = 'household_name';
+  var HOUSEHOLD_NAME = localStorage.getItem(HOUSEHOLD_NAME_KEY) || 'Turley Household';
+
+  function applyHouseholdName_() {
+    try {
+      document.title = HOUSEHOLD_NAME;
+      var h = document.querySelector('h1');
+      if (h) h.textContent = HOUSEHOLD_NAME;
+      var m = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+      if (m) m.setAttribute('content', HOUSEHOLD_NAME);
+    } catch (e) { /* branding must never be able to break the app */ }
+  }
+  applyHouseholdName_();
 
   function $(sel) { return document.querySelector(sel); }
   function $all(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
@@ -1190,8 +1217,19 @@
     // appears, instead of silently going grey. Hardcoding the names as CSS classes did
     // exactly that: the demo's fabricated people rendered every row the same colour and
     // the whole feature looked broken.
-    var PAID_TINT = { trevon: 'var(--paid-trevon)', ainsley: 'var(--paid-ainsley)' };
-    var PAID_FALLBACK = ['var(--paid-trevon)', 'var(--paid-ainsley)', 'var(--pos)', 'var(--neg)'];
+    // The colour SLOTS are generic. This override is not: it exists only so the
+    // two people in this household keep the colours they picked, instead of being
+    // assigned them alphabetically. Anyone whose name is not listed falls through
+    // to PAID_FALLBACK and still gets a distinct colour -- so a fork works
+    // untouched, it simply assigns by position.
+    //
+    // TWO-ADULT HOUSEHOLDS ONLY, and deliberately so as of 2026-08-25. Slots 3 and
+    // 4 below reuse --pos and --neg, which are the green and red used for money in
+    // and money out -- so a THIRD person would render in the same green as income.
+    // That is worse than repeating a colour and needs four real slots before this
+    // is used by a household with more than two card-holders.
+    var PAID_TINT = { trevon: 'var(--paid-1)', ainsley: 'var(--paid-2)' };
+    var PAID_FALLBACK = ['var(--paid-1)', 'var(--paid-2)', 'var(--pos)', 'var(--neg)'];
     function paidColor(name) {
       if (!name || name === 'Unassigned') return '';
       var key = String(name).toLowerCase();
