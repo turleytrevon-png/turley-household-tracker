@@ -212,7 +212,14 @@
   .snap-cat .nm { flex: 0 0 40%; font-size: 14px; overflow: hidden;
                   text-overflow: ellipsis; white-space: nowrap; }
   .snap-cat .bw { flex: 1; }
-  .snap-cat .am { flex: 0 0 auto; font-size: 13px; color: var(--muted); }
+  /* min-width, not auto: the verdict line varies in length row to row, and
+     letting it size the column left every bar track a different length. */
+  .snap-cat .am { flex: 0 0 auto; min-width: 132px; font-size: 13px; color: var(--muted);
+                  text-align: right; display: flex; flex-direction: column;
+                  align-items: flex-end; gap: 2px; }
+  .snap-cat .am .d { font-size: 11px; color: var(--faint); }
+  .snap-cat .am .d.bad { color: var(--neg); }
+  .snap-cat .am .d.good { color: var(--pos); }
   .snap-more { display: block; width: 100%; margin-top: var(--s3); background: none; border: 0;
                color: var(--accent); font-size: 13px; font-family: inherit; text-align: left;
                padding: var(--s2) 0; cursor: pointer; }
@@ -1270,6 +1277,27 @@
                    .sort(function(a, b) { return b.amount - a.amount; });
     }
 
+    // One category's spend through the same day, averaged over the same prior
+    // months snapTypicalByDay uses -- so a row's verdict and the hero's verdict
+    // are answering the question against the same history.
+    function snapTypicalCatByDay(monthKey, category, dayCap) {
+      var keys = sortedMonthKeys().filter(function(k) { return k < monthKey; });
+      if (keys.length > 1) keys = keys.slice(1);
+      keys = keys.slice(-6);
+      if (!keys.length) return null;
+      var inSet = {};
+      keys.forEach(function(k) { inSet[k] = true; });
+      var sum = 0;
+      allTransactions.forEach(function(t) {
+        if (!inSet[t.date.slice(0, 7)]) return;
+        if (Number(t.date.slice(8, 10)) > dayCap) return;
+        if (t.category !== category) return;
+        if (!snapIsSpend(t)) return;
+        sum += -t.amount;
+      });
+      return sum / keys.length;
+    }
+
     function snapCatTotalThroughDay(monthKey, cats, dayCap) {
       var total = 0;
       allTransactions.forEach(function(t) {
@@ -1458,18 +1486,60 @@
                    .filter(function(c) { return !FIXED_COSTS[c.category]; })
                    .slice(0, 5);
       if (!cats.length) { host.innerHTML = '<div class="loading">Nothing spent yet.</div>'; return; }
-      var max = cats[0].amount || 1;
+
+      // The bar used to measure each row against the BIGGEST row, which made the
+      // top row permanently full and told you nothing the dollar figure did not
+      // already say -- and it invited the reading "share of budget", which it was
+      // not. Trevon asked what the bars meant, which was the answer: nothing.
+      //
+      // Now each row is measured against ITS OWN normal for this point in the
+      // month, the same question the hero asks about total spend. That means the
+      // rows are scaled individually and their lengths are NOT comparable to each
+      // other -- which is fine, because the list is sorted by size and the dollar
+      // figures are right there. The bar is free to answer something new.
+      var fallbackMax = cats[0].amount || 1;
+
       host.innerHTML = cats.map(function(c) {
+        var typ = snapTypicalCatByDay(monthKey, c.category, day);
+        var hasTyp = typ !== null && typ > 0.005;
+        var scale, barPct, tickPct = -1, fillCls = '', note = '', noteCls = '';
+
+        if (hasTyp) {
+          scale = Math.max(typ, c.amount, 1);
+          barPct = (c.amount / scale) * 100;
+          tickPct = (typ / scale) * 100;
+          var d = c.amount - typ;
+          // Same 5% deadband as the hero. A $12 swing on groceries is noise, and
+          // colouring it red teaches you to ignore the colour.
+          if (Math.abs(d) / typ < 0.05) { note = 'about usual'; }
+          else if (d > 0) { note = fmtMoney(d) + ' over usual'; noteCls = 'bad'; fillCls = 'bad'; }
+          else { note = fmtMoney(-d) + ' under usual'; noteCls = 'good'; fillCls = 'good'; }
+        } else {
+          // Nothing to compare against. Rather than paint a red "over usual"
+          // against a zero, the bar falls back to its old job -- size against the
+          // biggest row -- and the row says why it has no verdict.
+          scale = fallbackMax;
+          barPct = (c.amount / scale) * 100;
+          if (typ !== null) note = 'new this month';
+        }
+
         return '<div class="snap-cat">' +
           '<span class="nm">' + c.category + '</span>' +
-          '<span class="bw"><span class="bar-track" style="display:block">' +
-            '<span class="bar-fill" style="display:block;width:' +
-              ((c.amount / max) * 100).toFixed(1) + '%"></span>' +
+          '<span class="bw"><span class="bar-track' + (tickPct >= 0 ? ' with-target' : '') +
+            '" style="display:block">' +
+            '<span class="bar-fill ' + fillCls + '" style="display:block;width:' +
+              Math.min(100, barPct).toFixed(1) + '%"></span>' +
+            (tickPct >= 0
+              ? '<span class="bar-target" style="left:' + Math.min(100, tickPct).toFixed(1) + '%"></span>'
+              : '') +
           '</span></span>' +
-          '<span class="am">' + fmtMoney(c.amount) + '</span>' +
+          '<span class="am"><span class="v">' + fmtMoney(c.amount) + '</span>' +
+            (note ? '<span class="d ' + noteCls + '">' + note + '</span>' : '') +
+          '</span>' +
         '</div>';
       }).join('') +
-      '<div class="snap-note">Fixed costs left out — they are the same every month</div>' +
+      '<div class="snap-note">Each bar is that category against its own usual by day ' + day +
+        '. Fixed costs left out — they are the same every month.</div>' +
       '<button type="button" class="snap-more" data-goto="spending">Full breakdown ›</button>';
     }
 
