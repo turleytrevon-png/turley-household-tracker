@@ -1432,6 +1432,11 @@
 
       var oneMonth = rangeIsOneMonth($('#tf-from').value, $('#tf-to').value);
       var d = txnChartData(source, oneMonth);
+      // A DAY bar holds a handful of rows; a MONTH bar holds about 140, which
+      // grouped by name is still up to 129 lines. keys[] is populated only in
+      // monthly mode, so it is the mode flag we already have.
+      var MONTHLY = !!(d.keys && d.keys.length);
+      var LINE_CAP = 10;
       if (!d.count) { host.innerHTML = ''; return; }
 
       var refunds = 'Outflows only \u2014 a refund shows in the list below but not in the bars.';
@@ -1466,7 +1471,54 @@
           (oneMonth ? 'day' : 'month') + '.</div></div>') +
         '<div class="txn-count">' + fmtMoney(d.total) + ' total across ' + d.count +
           (d.count === 1 ? ' outflow' : ' outflows') + '</div>';
-      attachScrub(host, d, tips);
+      attachScrub(host, d, tips, '#txnScrub', MONTHLY ? LINE_CAP : 0);
+    }
+
+    // Shared by the History chart and the Goals tab's weekly bars. It lived inside
+    // attachScrub, which meant a second chart wanting the same readout had to
+    // duplicate thirty lines of grouping -- and the two copies would drift.
+    function scrubReadoutHtml(label, rows, total, cap) {
+      var html = '<div class="head"><span class="day">' + label + '</span>' +
+        (total > 0 ? '<span class="sum">' + fmtMoneyCents(total) + '</span>'
+                   : '<span class="zero">nothing spent</span>') + '</div>';
+      if (!rows.length) return html;
+
+      // EVERY transaction is accounted for, but rows that DISPLAY the same name
+      // merge into one line and sum. Two $750 Zelle transfers both reading "Rent"
+      // are one $1,500 event to a human, and the count keeps it honest -- nothing
+      // is hidden, it is grouped. Same for two Amazon charges.
+      var groups = {}, order = [];
+      rows.forEach(function(t) {
+        var name = displayMerchant(t.merchant, t.category);
+        if (!groups[name]) { groups[name] = { name: name, total: 0, n: 0 }; order.push(name); }
+        groups[name].total += -t.amount;
+        groups[name].n += 1;
+      });
+      var list = order.map(function(k) { return groups[k]; })
+                      .sort(function(a, b) { return b.total - a.total; });
+
+      // Biggest first, so any cut falls on the small stuff. cap of 0 means no cap:
+      // a day bar and a week bar are both short enough to show whole, and only a
+      // month bar (up to 129 lines) ever needed truncating.
+      var shown = (cap && list.length > cap) ? list.slice(0, cap) : list;
+      var hidden = list.length - shown.length;
+      html += '<ul>' + shown.map(function(g) {
+        return '<li><span>' + g.name + (g.n > 1 ? ' \u00d7' + g.n : '') +
+               '</span><span>' + fmtMoneyCents(g.total) + '</span></li>';
+      }).join('') + '</ul>';
+      // Never let a cap hide money silently -- name the rest and total it, so the
+      // lines on screen plus this footer still account for the bar.
+      if (hidden > 0) {
+        var rest = 0;
+        for (var h = shown.length; h < list.length; h++) rest += list[h].total;
+        html += '<div class="more">+ ' + hidden + ' smaller ' +
+                (hidden === 1 ? 'line' : 'lines') + ' \u00b7 ' + fmtMoneyCents(rest) + '</div>';
+      }
+      if (rows.length > 1) {
+        html += '<div class="more">' + rows.length + ' purchases' +
+                (list.length !== rows.length ? ' in ' + list.length + ' lines' : '') + '</div>';
+      }
+      return html;
     }
 
     // ---- Scrub -------------------------------------------------------------
@@ -1475,10 +1527,14 @@
     // the bar was never going to work. This reads horizontal position across the whole
     // plot and picks the nearest bar, which makes the target the full column height and
     // removes the possibility of missing entirely.
-    function attachScrub(host, data, tips) {
+    // readSel and cap are parameters so a second chart can reuse this whole
+    // interaction. The readout id used to be hardcoded to '#txnScrub', which also
+    // meant two scrubbable charts on one page would fight over the same element.
+    function attachScrub(host, data, tips, readSel, cap) {
       var svg = host.querySelector('svg');
-      var read = host.querySelector('#txnScrub');
+      var read = host.querySelector(readSel || '#txnScrub');
       if (!svg || !read) return;
+      cap = cap || 0;
 
       var padL = Number(svg.dataset.padLeft);
       var plotW = Number(svg.dataset.plotWidth);
@@ -1487,20 +1543,17 @@
       if (!(bars > 0) || !(plotW > 0)) return;
 
       var rects = svg.querySelectorAll('rect.bar-seg');
-      var baseFill = SPARK_COLOR;
       var lastIdx = -1;
 
-      // A DAY bar holds a handful of rows; a MONTH bar holds about 140, which grouped
-      // by name is still up to 129 lines. Rendering all of them turned a tap into a
-      // wall of text that read as the entire transaction history rather than as one
-      // bar's contents. keys[] is populated only in monthly mode, so it is the mode
-      // flag we already have.
-      var MONTHLY = !!(data.keys && data.keys.length);
-      var LINE_CAP = 10;
-
+      // Restore each bar's OWN colour, not one base colour. The weekly chart paints
+      // every bar against its own week's target -- red over, green under -- and
+      // repainting them all with SPARK_COLOR wiped that out the instant you tapped,
+      // turning a meaningful chart into a plain blue one. buildBarChart already
+      // records the original in data-color, for exactly this.
       function highlight(i) {
         for (var k = 0; k < rects.length; k++) {
-          rects[k].setAttribute('fill', k === i ? SPARK_HILITE : baseFill);
+          rects[k].setAttribute('fill',
+            k === i ? SPARK_HILITE : (rects[k].dataset.color || SPARK_COLOR));
         }
       }
 
@@ -1508,48 +1561,8 @@
         if (i === lastIdx) return;
         lastIdx = i;
         highlight(i);
-        var rows = (data.items && data.items[i]) || [];
-        var total = data.values[i] || 0;
-        var html = '<div class="head"><span class="day">' + tips[i] + '</span>' +
-          (total > 0 ? '<span class="sum">' + fmtMoneyCents(total) + '</span>'
-                     : '<span class="zero">nothing spent</span>') + '</div>';
-        if (rows.length) {
-          // EVERY transaction is accounted for, but rows that DISPLAY the same name on
-          // the same day merge into one line and sum. Two $750 Zelle transfers both
-          // reading "Rent" are one $1,500 event to a human, and the count keeps it
-          // honest -- nothing is hidden, it is grouped. Same for two Amazon charges.
-          var groups = {}, order = [];
-          rows.forEach(function(t) {
-            var name = displayMerchant(t.merchant, t.category);
-            if (!groups[name]) { groups[name] = { name: name, total: 0, n: 0 }; order.push(name); }
-            groups[name].total += -t.amount;
-            groups[name].n += 1;
-          });
-          var list = order.map(function(k) { return groups[k]; })
-                          .sort(function(a, b) { return b.total - a.total; });
-          // Cap the list on month bars only. Biggest first, so the cut falls on the
-          // small stuff. Day bars are short enough to show whole and always were.
-          var shown = (MONTHLY && list.length > LINE_CAP) ? list.slice(0, LINE_CAP) : list;
-          var hidden = list.length - shown.length;
-          html += '<ul>' + shown.map(function(g) {
-            return '<li><span>' + g.name + (g.n > 1 ? ' \u00d7' + g.n : '') +
-                   '</span><span>' + fmtMoneyCents(g.total) + '</span></li>';
-          }).join('') + '</ul>';
-          // Never let the cap hide money silently -- name the rest and total it, so
-          // the lines on screen plus this footer still account for the bar.
-          if (hidden > 0) {
-            var rest = 0;
-            for (var h = shown.length; h < list.length; h++) rest += list[h].total;
-            html += '<div class="more">+ ' + hidden + ' smaller ' +
-                    (hidden === 1 ? 'line' : 'lines') + ' \u00b7 ' + fmtMoneyCents(rest) +
-                    '</div>';
-          }
-          if (rows.length > 1) {
-            html += '<div class="more">' + rows.length + ' purchases' +
-                    (list.length !== rows.length ? ' in ' + list.length + ' lines' : '') + '</div>';
-          }
-        }
-        read.innerHTML = html;
+        read.innerHTML = scrubReadoutHtml(tips[i], (data.items && data.items[i]) || [],
+                                          data.values[i] || 0, cap);
       }
 
       function indexFromClientX(clientX) {
@@ -2113,6 +2126,22 @@
       return out;
     }
 
+    // The ROWS behind a week block. weekCategoryTotal sums the same set; this
+    // returns it, so tapping a bar can name what was actually bought.
+    function weekCategoryRows(monthKey, b, cats, person) {
+      var out = [];
+      allTransactions.forEach(function(t) {
+        if (t.date.slice(0, 7) !== monthKey) return;
+        if (t.amount >= 0) return;
+        if (cats.indexOf(t.category) === -1) return;
+        if (person && t.person !== person) return;
+        var d = Number(t.date.slice(8, 10));
+        if (d < b.start || d > b.end) return;
+        out.push(t);
+      });
+      return out;
+    }
+
     function weekCategoryTotal(monthKey, b, cats, person) {
       var total = 0;
       allTransactions.forEach(function(t) {
@@ -2238,14 +2267,21 @@
           if (!panel) return;
           var open = !panel.hidden;
           if (open) { panel.hidden = true; btn.textContent = 'Week by week \u203a'; return; }
-          panel.innerHTML = weeklyPanelHtml(defs[idx], monthKey, partial);
+          panel.innerHTML = weeklyPanelHtml(defs[idx], monthKey, partial, idx);
           panel.hidden = false;
           btn.textContent = 'Hide weeks \u2039';
+          // Same interaction as the History chart, same readout, no cap -- a week
+          // holds single figures, not the 129 lines a month bar can.
+          if (WEEK_SCRUB[idx]) {
+            attachScrub(panel, WEEK_SCRUB[idx], WEEK_SCRUB[idx].tips, '#wkScrub' + idx, 0);
+          }
         });
       });
     }
 
-    function weeklyPanelHtml(b, monthKey, partial) {
+    var WEEK_SCRUB = {};
+
+    function weeklyPanelHtml(b, monthKey, partial, wkIdx) {
       var target = personFilter ? b.perPerson : b.monthly;
       var blocks = monthWeekBlocks(monthKey);
       var today = new Date();
@@ -2313,6 +2349,17 @@
         var vals = started.map(function(bk) {
           return weekCategoryTotal(monthKey, bk, b.categories, personFilter);
         });
+        // Held for attachWeekly, so tapping a bar can list that week's purchases
+        // using the same readout the History chart uses.
+        WEEK_SCRUB[wkIdx] = {
+          labels: started.map(function(bk) { return String(bk.start); }),
+          values: vals,
+          keys: [],                     // empty = no line cap; a week is short
+          items: started.map(function(bk) {
+            return weekCategoryRows(monthKey, bk, b.categories, personFilter); }),
+          tips: started.map(function(bk) {
+            return shortMonth(monthKey) + ' ' + bk.start + '\u2013' + bk.end; })
+        };
         var tgts = started.map(function(bk) { return target * bk.days / bk.dim; });
         // color() is called once per bar, in order, by the single forEach inside
         // buildBarChart -- so a counter lines each bar up with its own week's target.
@@ -2324,8 +2371,9 @@
           [{ name: b.name, values: vals,
              color: function(v) { var t = tgts[ci++]; return v > t + 0.005 ? 'var(--neg)' : 'var(--pos)'; } }],
           { height: 132, barFactor: 0.7, labelEvery: 1,
-            tipLabels: started.map(function(bk) {
-              return shortMonth(monthKey) + ' ' + bk.start + '\u2013' + bk.end; }) });
+            tipLabels: WEEK_SCRUB[wkIdx].tips }) +
+          '<div class="scrub" id="wkScrub' + wkIdx + '"><div class="hint">' +
+          'Tap or drag the bars to see what was bought that week.</div></div>';
       }
 
       return lead + chart + rows.join('') + foot;
