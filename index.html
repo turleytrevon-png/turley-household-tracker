@@ -170,6 +170,11 @@
   /* One number, one verdict, one bar. Everything below is supporting evidence. */
   .snap-hero { margin-bottom: var(--s6); }
   .snap-hero .lbl { font-size: 13px; color: var(--muted); }
+  /* The hero counts day-to-day spending only. Saying so on the label is cheaper
+     than a reader wondering whether their savings transfer is in the number --
+     which is exactly what happened. */
+  .snap-hero .lbl .qual { color: var(--faint); }
+  .kpi-sub .set { color: var(--pos); }
   .snap-hero .val { font-size: 46px; font-weight: 600; letter-spacing: -0.035em;
                     line-height: 1.05; margin-top: var(--s2); }
   .snap-verdict { font-size: 14px; margin-top: var(--s3); font-weight: 500; }
@@ -206,20 +211,6 @@
                  border-bottom: 1px solid var(--hair); font-size: 13px; }
   .snap-rollup .n { font-weight: 600; }
 
-  .snap-cat { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) 0;
-              border-bottom: 1px solid var(--hair); }
-  .snap-cat:last-child { border-bottom: 0; }
-  .snap-cat .nm { flex: 0 0 40%; font-size: 14px; overflow: hidden;
-                  text-overflow: ellipsis; white-space: nowrap; }
-  .snap-cat .bw { flex: 1; }
-  /* min-width, not auto: the verdict line varies in length row to row, and
-     letting it size the column left every bar track a different length. */
-  .snap-cat .am { flex: 0 0 auto; min-width: 132px; font-size: 13px; color: var(--muted);
-                  text-align: right; display: flex; flex-direction: column;
-                  align-items: flex-end; gap: 2px; }
-  .snap-cat .am .d { font-size: 11px; color: var(--faint); }
-  .snap-cat .am .d.bad { color: var(--neg); }
-  .snap-cat .am .d.good { color: var(--pos); }
   .snap-more { display: block; width: 100%; margin-top: var(--s3); background: none; border: 0;
                color: var(--accent); font-size: 13px; font-family: inherit; text-align: left;
                padding: var(--s2) 0; cursor: pointer; }
@@ -1265,6 +1256,21 @@
       return { value: sum / keys.length, months: keys.length };
     }
 
+    // NET movement in or out of savings this month. Net, not gross: a withdrawal
+    // back out offsets a deposit, and this figure sits directly under the pooled
+    // BALANCE, so the two have to reconcile. cashFlowKpis learned the same lesson
+    // -- a single $600 withdrawal ignored made it report -$668/mo.
+    function snapSavingsNetThroughDay(monthKey, dayCap) {
+      var net = 0;
+      allTransactions.forEach(function(t) {
+        if (t.date.slice(0, 7) !== monthKey) return;
+        if (Number(t.date.slice(8, 10)) > dayCap) return;
+        if (t.category !== 'Internal Savings Transfer') return;
+        net += -t.amount;      // out of checking = into savings = positive
+      });
+      return net;
+    }
+
     function snapCatsThroughDay(monthKey, dayCap) {
       var totals = {};
       allTransactions.forEach(function(t) {
@@ -1378,7 +1384,8 @@
       var tickPct = typ ? Math.min(100, (typ.value / scale) * 100) : 0;
 
       $('#snapHero').innerHTML =
-        '<div class="lbl">Spent so far this month</div>' +
+        '<div class="lbl">Spent so far this month' +
+          '<span class="qual"> \u00b7 savings and debt not counted</span></div>' +
         '<div class="val">' + fmtMoney(spent) + '</div>' +
         '<div class="snap-verdict ' + vclass + '">' + verdict + '</div>' +
         (typ
@@ -1397,13 +1404,19 @@
       var net = income - spent;
       var pooled = (DASH.pooled && typeof DASH.pooled.totalBalance === 'number')
         ? DASH.pooled.totalBalance : null;
+      // Money SET ASIDE, which is not money gone -- it is still theirs. That is
+      // why it is absent from the hero and present here instead.
+      var setAside = snapSavingsNetThroughDay(monthKey, day);
+      var setAsideNote = setAside > 0.005 ? '+' + fmtMoney(setAside) + ' set aside this month'
+                       : setAside < -0.005 ? fmtMoney(setAside) + ' taken back out this month'
+                       : 'nothing moved this month';
 
       $('#kpiGrid').innerHTML =
         kpiCard('Money in', fmtMoney(income), 'positive', 'this month so far') +
         kpiCard('In minus out', fmtMoney(net), net < 0 ? 'negative' : 'positive',
           'before savings and debt') +
         kpiCard('Savings', pooled === null ? '&middot;&middot;&middot;' : fmtMoney(pooled),
-          'positive', 'pooled balance') +
+          'positive', 'pooled balance<br><span class="set">' + setAsideNote + '</span>') +
         kpiCard('Card owed', fmtMoney(k.cardBalance), '',
           k.cardUtilization + ' of ' + fmtMoney(k.cardLimit));
 
@@ -1523,19 +1536,23 @@
           if (typ !== null) note = 'new this month';
         }
 
-        return '<div class="snap-cat">' +
-          '<span class="nm">' + c.category + '</span>' +
-          '<span class="bw"><span class="bar-track' + (tickPct >= 0 ? ' with-target' : '') +
-            '" style="display:block">' +
-            '<span class="bar-fill ' + fillCls + '" style="display:block;width:' +
-              Math.min(100, barPct).toFixed(1) + '%"></span>' +
+        // Same three-line shape as the budget rows above -- name and amount, then
+        // a full-width bar, then the verdict. The previous side-by-side layout
+        // put the name, the bar and a variable-length verdict on ONE line, which
+        // held up at 520px and collapsed on a real 390px phone: the bar was
+        // squeezed to a 30px stub and 'Home & Maintenance' truncated. The bar is
+        // the point of the row, so it gets the width.
+        return '<div class="snap-brow">' +
+          '<div class="r"><span>' + c.category + '</span>' +
+            '<span class="amt">' + fmtMoney(c.amount) + '</span></div>' +
+          '<div class="bar-track' + (tickPct >= 0 ? ' with-target' : '') + '">' +
+            '<div class="bar-fill ' + fillCls + '" style="width:' +
+              Math.min(100, barPct).toFixed(1) + '%"></div>' +
             (tickPct >= 0
-              ? '<span class="bar-target" style="left:' + Math.min(100, tickPct).toFixed(1) + '%"></span>'
+              ? '<div class="bar-target" style="left:' + Math.min(100, tickPct).toFixed(1) + '%"></div>'
               : '') +
-          '</span></span>' +
-          '<span class="am"><span class="v">' + fmtMoney(c.amount) + '</span>' +
-            (note ? '<span class="d ' + noteCls + '">' + note + '</span>' : '') +
-          '</span>' +
+          '</div>' +
+          (note ? '<div class="snap-note ' + noteCls + '">' + note + '</div>' : '') +
         '</div>';
       }).join('') +
       '<div class="snap-note">Each bar is that category against its own usual by day ' + day +
