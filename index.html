@@ -1260,16 +1260,17 @@
     // back out offsets a deposit, and this figure sits directly under the pooled
     // BALANCE, so the two have to reconcile. cashFlowKpis learned the same lesson
     // -- a single $600 withdrawal ignored made it report -$668/mo.
-    function snapSavingsNetThroughDay(monthKey, dayCap) {
+    function snapNetThroughDay(monthKey, cats, dayCap) {
       var net = 0;
       allTransactions.forEach(function(t) {
         if (t.date.slice(0, 7) !== monthKey) return;
-        if (Number(t.date.slice(8, 10)) > dayCap) return;
-        if (t.category !== 'Internal Savings Transfer') return;
+        if (dayCap && Number(t.date.slice(8, 10)) > dayCap) return;
+        if (cats.indexOf(t.category) === -1) return;
         net += -t.amount;      // out of checking = into savings = positive
       });
       return net;
     }
+    var SAVINGS_CATS = ['Internal Savings Transfer'];
 
     function snapCatsThroughDay(monthKey, dayCap) {
       var totals = {};
@@ -1406,7 +1407,7 @@
         ? DASH.pooled.totalBalance : null;
       // Money SET ASIDE, which is not money gone -- it is still theirs. That is
       // why it is absent from the hero and present here instead.
-      var setAside = snapSavingsNetThroughDay(monthKey, day);
+      var setAside = snapNetThroughDay(monthKey, SAVINGS_CATS, day);
       var setAsideNote = setAside > 0.005 ? '+' + fmtMoney(setAside) + ' set aside this month'
                        : setAside < -0.005 ? fmtMoney(setAside) + ' taken back out this month'
                        : 'nothing moved this month';
@@ -1438,7 +1439,14 @@
       var frac = day / dim;
 
       var rows = budgetDefs.map(function(b) {
-        var spent = snapCatTotalThroughDay(monthKey, b.categories, day);
+        // A savings budget must NET the direction. The handoff brief carries this
+        // as a standing rule: 'Internal Savings Transfer' has inflows as well as
+        // outflows, and filtering to outflows once overstated savings by exactly
+        // the $600 that came back out on 2026-05-22. Spending budgets stay
+        // outflow-only, matching the Goals tab they mirror.
+        var spent = (b.better === 'up')
+          ? snapNetThroughDay(monthKey, b.categories, day)
+          : snapCatTotalThroughDay(monthKey, b.categories, day);
         var target = Number(b.monthly) || 0;
         var paced = target * frac;
         var up = b.better === 'up';                  // savings: more is better
@@ -2642,7 +2650,12 @@
           actual = ta.value;
           basis = ta.months + '-month average';
         } else {
-          actual = monthCategoryTotal(monthKey, b.categories, personFilter);
+          // Same standing rule as Home's budget card: net the direction on a
+          // savings budget. These two screens show the same figure and must not
+          // drift apart.
+          actual = (b.better === 'up')
+            ? snapNetThroughDay(monthKey, b.categories, 0)
+            : monthCategoryTotal(monthKey, b.categories, personFilter);
           basis = '';
         }
 
