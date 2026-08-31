@@ -158,6 +158,64 @@
      is over target for spending and UNDER target for savings. */
   .bar-fill.bad { background: var(--neg); }
   .bar-fill.good { background: var(--pos); }
+
+  /* ---- Home: the snapshot --------------------------------------------- */
+  .snap-head { margin: var(--s2) 0 var(--s4); }
+  .snap-month { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+  .snap-asof { font-size: 12px; color: var(--faint); margin-top: 2px; }
+  .month-progress { background: rgba(255,255,255,0.07); border-radius: var(--r-pill);
+                    height: 3px; overflow: hidden; margin-top: var(--s3); }
+  .month-progress-fill { background: var(--faint); height: 100%; border-radius: var(--r-pill); }
+
+  /* One number, one verdict, one bar. Everything below is supporting evidence. */
+  .snap-hero { margin-bottom: var(--s6); }
+  .snap-hero .lbl { font-size: 13px; color: var(--muted); }
+  .snap-hero .val { font-size: 46px; font-weight: 600; letter-spacing: -0.035em;
+                    line-height: 1.05; margin-top: var(--s2); }
+  .snap-verdict { font-size: 14px; margin-top: var(--s3); font-weight: 500; }
+  .snap-verdict.good { color: var(--pos); }
+  .snap-verdict.bad  { color: var(--neg); }
+  .snap-verdict.flat { color: var(--muted); }
+  .snap-sub { font-size: 12px; color: var(--faint); margin-top: var(--s2); }
+
+  /* The pace bar: the fill is what has actually been spent, the tick is where a
+     typical month has you by this same day. Fill past tick = spending faster
+     than usual. Both are scaled to a whole typical month, so the track's full
+     length means something rather than being a bare percentage. */
+  .pace-track { background: rgba(255,255,255,0.07); border-radius: var(--r-pill); height: 8px;
+                position: relative; margin-top: var(--s4); }
+  .pace-fill { height: 100%; border-radius: var(--r-pill); background: var(--pos);
+               transition: width 0.5s cubic-bezier(0.2,0.8,0.2,1); }
+  .pace-fill.bad { background: var(--neg); }
+  .pace-tick { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px;
+               background: var(--text); opacity: 0.55; border-radius: 2px; }
+
+  /* Budget rows: the Goals tab's visual language at a third the height, because
+     Home is a glance and Goals is the detail. */
+  .snap-brow { padding: var(--s3) 0; border-bottom: 1px solid var(--hair); }
+  .snap-brow:last-child { border-bottom: 0; }
+  .snap-brow .r { display: flex; justify-content: space-between; align-items: baseline;
+                  font-size: 14px; margin-bottom: 7px; }
+  .snap-brow .r .amt { font-size: 12px; color: var(--muted); }
+  .snap-note { font-size: 11px; margin-top: 6px; color: var(--faint); }
+  .snap-note.bad { color: var(--neg); }
+  .snap-note.good { color: var(--pos); }
+
+  .snap-rollup { display: flex; justify-content: space-between; align-items: baseline;
+                 padding-bottom: var(--s3); margin-bottom: var(--s1);
+                 border-bottom: 1px solid var(--hair); font-size: 13px; }
+  .snap-rollup .n { font-weight: 600; }
+
+  .snap-cat { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) 0;
+              border-bottom: 1px solid var(--hair); }
+  .snap-cat:last-child { border-bottom: 0; }
+  .snap-cat .nm { flex: 0 0 40%; font-size: 14px; overflow: hidden;
+                  text-overflow: ellipsis; white-space: nowrap; }
+  .snap-cat .bw { flex: 1; }
+  .snap-cat .am { flex: 0 0 auto; font-size: 13px; color: var(--muted); }
+  .snap-more { display: block; width: 100%; margin-top: var(--s3); background: none; border: 0;
+               color: var(--accent); font-size: 13px; font-family: inherit; text-align: left;
+               padding: var(--s2) 0; cursor: pointer; }
   .goal-note { font-size: 12px; color: var(--faint); margin-top: var(--s2); }
 
   /* --- Weekly breakdown ----------------------------------------------------
@@ -378,9 +436,21 @@
   </header>
   <main>
     <section id="page-dashboard" class="page active">
-      <div class="kpi-grid" id="kpiGrid"><div class="loading">Loading dashboard…</div></div>
-      <div class="section-title">Pooled Savings</div>
-      <div class="card pooled-card" id="pooledCard"></div>
+      <div class="snap-head">
+        <div class="snap-month" id="snapMonth">&mdash;</div>
+        <div class="snap-asof" id="snapAsOf"></div>
+        <div class="month-progress"><div class="month-progress-fill" id="monthProgress"></div></div>
+      </div>
+
+      <div class="snap-hero" id="snapHero"><div class="loading">Loading&hellip;</div></div>
+
+      <div class="kpi-grid" id="kpiGrid"></div>
+
+      <div class="section-title">Budgets, at today's pace</div>
+      <div id="snapBudgets"><div class="loading">Loading budgets&hellip;</div></div>
+
+      <div class="section-title">Where it went this month</div>
+      <div class="card" id="snapCats"></div>
     </section>
 
     <!-- "What happened in July" and "what's the trend" are two views of the same
@@ -413,6 +483,8 @@
       <div class="chart-note" id="budgetMonthNote"></div>
       <div class="seg" id="personFilter" style="display:none"></div>
       <div id="budgetList"><div class="loading">Loading budgets…</div></div>
+      <div class="section-title">Pooled Savings</div>
+      <div class="card pooled-card" id="pooledCard"></div>
       <div class="section-title">Savings goals</div>
       <div id="goalsList"><div class="loading">Loading goals…</div></div>
       <!-- Hidden until a loan actually exists, so an empty Loans tab leaves no
@@ -1098,34 +1170,301 @@
     // second dashboard fetch.
     var DASH = null;
 
+    // ---- Home: the snapshot ---------------------------------------------
+    //
+    // Home used to answer "how do we run, typically" -- eight cards, every one a
+    // long-run average or a year-to-date total. That is a reference page. Someone
+    // opening the app wants "are we OK right now", and no average answers it: the
+    // old hero read the same on the 3rd as on the 28th.
+    //
+    // So: one hero (spend this month, against the pace a typical month sets by
+    // this same day), then the standing balances, then only the budgets actually
+    // slipping, then where the money went. The averages are still here -- demoted
+    // to the reference line the hero is measured against.
+    //
+    // Nothing here needs the server. Every figure comes from allTransactions,
+    // budgetDefs and the dashboard payload already in memory.
+
+    // Checking rows that are not day-to-day spending. Deliberately a separate
+    // list from computeMonthSummary's inline checks: that function also splits
+    // by account and builds a category rollup, and folding the two together
+    // meant one of them silently changing the other. Keep them in step by hand.
+    var SNAP_NOT_SPEND = {
+      'Income': true, 'Credit Card Payments': true, 'Auto Loan Payment': true,
+      'Credit Line Payment': true, 'Internal Savings Transfer': true,
+      'Card Debt Paydown': true
+    };
+
+    function daysInMonthKey(key) {
+      return new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)), 0).getDate();
+    }
+
+    // The day the comparison is anchored to: the last day in the month that has
+    // data, NOT today's date. Bank alerts lag, so a month whose rows stop on the
+    // 18th compared against a typical 22nd would report "under pace" purely
+    // because four days had not landed yet. Like for like, or not at all.
+    function snapDataDay(monthKey) {
+      var latest = 0;
+      allTransactions.forEach(function(t) {
+        if (t.date.slice(0, 7) !== monthKey) return;
+        var d = Number(t.date.slice(8, 10));
+        if (d > latest) latest = d;
+      });
+      return latest;
+    }
+
+    // Is this row day-to-day spending? Shared by the three tallies below so they
+    // cannot disagree about what counts.
+    function snapIsSpend(t) {
+      if (-t.amount <= 0) return false;                 // inflows and refunds
+      if (t.account === 'checking') return !SNAP_NOT_SPEND[t.category];
+      return !CREDIT_EXCLUDE[t.category];               // the credit leg of a card payment
+    }
+
+    // Day-to-day spend in one month, counting only days 1..dayCap. Transfers
+    // between our own accounts and loan principal are excluded: moving money is
+    // not spending it.
+    function snapSpendThroughDay(monthKey, dayCap) {
+      var total = 0;
+      allTransactions.forEach(function(t) {
+        if (t.date.slice(0, 7) !== monthKey) return;
+        if (Number(t.date.slice(8, 10)) > dayCap) return;
+        if (snapIsSpend(t)) total += -t.amount;
+      });
+      return total;
+    }
+
+    function snapIncomeThroughDay(monthKey, dayCap) {
+      var total = 0;
+      allTransactions.forEach(function(t) {
+        if (t.date.slice(0, 7) !== monthKey) return;
+        if (Number(t.date.slice(8, 10)) > dayCap) return;
+        if (t.account === 'checking' && t.category === 'Income') total += t.amount;
+      });
+      return total;
+    }
+
+    // What a normal month looks like by this same day. Prior COMPLETE months
+    // only, most recent six. The first month in the data is dropped whenever
+    // there is more than one: data that starts mid-month would drag the average
+    // down and flatter every month measured against it.
+    function snapTypicalByDay(monthKey, dayCap) {
+      var keys = sortedMonthKeys().filter(function(k) { return k < monthKey; });
+      if (keys.length > 1) keys = keys.slice(1);
+      keys = keys.slice(-6);
+      if (!keys.length) return null;
+      var sum = 0;
+      keys.forEach(function(k) { sum += snapSpendThroughDay(k, dayCap); });
+      return { value: sum / keys.length, months: keys.length };
+    }
+
+    function snapCatsThroughDay(monthKey, dayCap) {
+      var totals = {};
+      allTransactions.forEach(function(t) {
+        if (t.date.slice(0, 7) !== monthKey) return;
+        if (Number(t.date.slice(8, 10)) > dayCap) return;
+        if (!snapIsSpend(t)) return;
+        totals[t.category] = (totals[t.category] || 0) + -t.amount;
+      });
+      return Object.keys(totals).map(function(c) { return { category: c, amount: totals[c] }; })
+                   .sort(function(a, b) { return b.amount - a.amount; });
+    }
+
+    function snapCatTotalThroughDay(monthKey, cats, dayCap) {
+      var total = 0;
+      allTransactions.forEach(function(t) {
+        if (t.date.slice(0, 7) !== monthKey) return;
+        if (Number(t.date.slice(8, 10)) > dayCap) return;
+        if (t.amount >= 0) return;
+        if (cats.indexOf(t.category) === -1) return;
+        total += -t.amount;
+      });
+      return total;
+    }
+
     function renderKpiGrid() {
       if (!DASH) return;
       var k = DASH.kpis;
-      var cf = cashFlowKpis(allTransactions);
-      var marginClass = Number(k.netCashFlow) < 0 ? 'negative' : 'positive';
-      var checkClass = Number(k.checkingChange) < 0 ? 'negative' : 'positive';
-      // Home answers "how do we run, typically" — every figure here is a long-run
-      // average or a standing balance. The Spending tab answers "what happened in
-      // one month". Keeping the hero here and dropping it there is what stops the
-      // two screens reading as the same screen twice.
-      //
-      // The hero is the SPENDING margin and now says so. It answers a real question
-      // ("does day-to-day spending fit our income") and was only wrong for as long as
-      // it claimed to be the bottom line. The bottom line is the card beside it.
+      var keys = sortedMonthKeys();
+      if (!keys.length) return;
+
+      var monthKey = keys[keys.length - 1];
+      var dim = daysInMonthKey(monthKey);
+      var day = Math.min(snapDataDay(monthKey) || dim, dim);
+      var frac = day / dim;
+      var left = dim - day;
+      var complete = left <= 0;
+
+      // --- header -----------------------------------------------------------
+      $('#snapMonth').textContent = monthLabel(monthKey);
+      $('#snapAsOf').textContent = complete
+        ? 'Complete month'
+        : 'Through ' + shortMonth(monthKey) + ' ' + day + ' · ' +
+          left + (left === 1 ? ' day to go' : ' days to go');
+      $('#monthProgress').style.width = (frac * 100).toFixed(1) + '%';
+
+      // --- hero: spend so far, against the pace a typical month sets ---------
+      var spent = snapSpendThroughDay(monthKey, day);
+      var typ = snapTypicalByDay(monthKey, day);
+      var full = snapTypicalByDay(monthKey, dim);   // a whole typical month, for the scale
+
+      var verdict, vclass, sub = '';
+      if (typ && typ.value > 0) {
+        var diff = spent - typ.value;
+        // Under 5% either way is noise, not a signal. Calling a $40 swing
+        // "over pace" trains you to ignore the line.
+        if (Math.abs(diff) / typ.value < 0.05) {
+          verdict = 'Right on your usual pace';
+          vclass = 'flat';
+        } else if (diff < 0) {
+          verdict = fmtMoney(-diff) + ' under your usual pace';
+          vclass = 'good';
+        } else {
+          verdict = fmtMoney(diff) + ' over your usual pace';
+          vclass = 'bad';
+        }
+        // A projection is the honest way to say what a pace MEANS, and it only
+        // means anything while the month is still running.
+        //
+        // Scaled by the SHAPE of a typical month, not by days elapsed. Rent and
+        // insurance land in the first week, so spending is heavily front-loaded:
+        // a straight-line spent/frac read $7,610 on day 18 of a month that
+        // typically finishes at $5,786, while the verdict line directly above it
+        // said "right on your usual pace". Two contradicting numbers is the exact
+        // fault this page was rebuilt to remove.
+        var proj = (full && full.value > 0)
+          ? spent * (full.value / typ.value)
+          : (frac > 0 ? spent / frac : spent);
+        sub = complete
+          ? 'A typical month by day ' + day + ' is ' + fmtMoney(typ.value) +
+            ' · ' + typ.months + '-month average'
+          : 'On pace to finish around ' + fmtMoney(proj) +
+            ' · typical by day ' + day + ' is ' + fmtMoney(typ.value);
+      } else {
+        verdict = 'No earlier months to compare against yet';
+        vclass = 'flat';
+      }
+
+      var scale = Math.max(full ? full.value : 0, spent, 1);
+      var fillPct = Math.min(100, (spent / scale) * 100);
+      var tickPct = typ ? Math.min(100, (typ.value / scale) * 100) : 0;
+
+      $('#snapHero').innerHTML =
+        '<div class="lbl">Spent so far this month</div>' +
+        '<div class="val">' + fmtMoney(spent) + '</div>' +
+        '<div class="snap-verdict ' + vclass + '">' + verdict + '</div>' +
+        (typ
+          ? '<div class="pace-track">' +
+              '<div class="pace-fill' + (vclass === 'bad' ? ' bad' : '') +
+                '" style="width:' + fillPct.toFixed(1) + '%"></div>' +
+              '<div class="pace-tick" style="left:' + tickPct.toFixed(1) + '%"></div>' +
+            '</div>'
+          : '') +
+        (sub ? '<div class="snap-sub">' + sub + '</div>' : '');
+
+      // --- the standing balances, and this month's money in ------------------
+      // Four tiles, not eight, and every one is a fact about right now: what has
+      // come in, whether the month nets out, what is banked, what is owed.
+      var income = snapIncomeThroughDay(monthKey, day);
+      var net = income - spent;
+      var pooled = (DASH.pooled && typeof DASH.pooled.totalBalance === 'number')
+        ? DASH.pooled.totalBalance : null;
+
       $('#kpiGrid').innerHTML =
-        kpiCard('Monthly spending margin', fmtMoney(k.netCashFlow), marginClass,
-          'income minus day-to-day spending', 'kpi-hero') +
-        kpiCard('After savings &amp; debt', cf ? fmtMoney(cf.drain) : '&middot;&middot;&middot;',
-          cf ? (cf.drain < 0 ? 'negative' : 'positive') : '',
-          'what actually leaves checking') +
-        kpiCard('Moved, not spent', cf ? fmtMoney(cf.moved) : '&middot;&middot;&middot;',
-          'positive', 'savings + loan principal &mdash; still yours') +
-        kpiCard('Avg monthly income', fmtMoney(k.avgIncome), 'positive') +
-        kpiCard('Avg monthly spend', fmtMoney(k.avgSpend), '') +
-        kpiCard('Card utilization', k.cardUtilization, '',
-          fmtMoney(k.cardBalance) + ' of ' + fmtMoney(k.cardLimit)) +
-        kpiCard('Checking change', fmtMoney(k.checkingChange), checkClass, 'year to date') +
-        kpiCard('Top variable spend', k.topCategory, 'is-text', 'fixed costs excluded', 'kpi-wide');
+        kpiCard('Money in', fmtMoney(income), 'positive', 'this month so far') +
+        kpiCard('In minus out', fmtMoney(net), net < 0 ? 'negative' : 'positive',
+          'before savings and debt') +
+        kpiCard('Savings', pooled === null ? '&middot;&middot;&middot;' : fmtMoney(pooled),
+          'positive', 'pooled balance') +
+        kpiCard('Card owed', fmtMoney(k.cardBalance), '',
+          k.cardUtilization + ' of ' + fmtMoney(k.cardLimit));
+
+      renderSnapBudgets(monthKey, day, dim);
+      renderSnapCats(monthKey, day);
+    }
+
+    // Budgets, prorated to the day. Comparing 22 days of spending against a whole
+    // month's target reads as "under budget" every month until the 28th, which is
+    // worse than showing nothing. The tick is the target scaled to today.
+    function renderSnapBudgets(monthKey, day, dim) {
+      var host = $('#snapBudgets');
+      if (!host) return;
+      if (!budgetDefs) { host.innerHTML = '<div class="loading">Loading budgets…</div>'; return; }
+      if (!budgetDefs.length) {
+        host.innerHTML = '<div class="loading">No budgets set. Add rows to the Budget tab in the Sheet.</div>';
+        return;
+      }
+      var frac = day / dim;
+
+      var rows = budgetDefs.map(function(b) {
+        var spent = snapCatTotalThroughDay(monthKey, b.categories, day);
+        var target = Number(b.monthly) || 0;
+        var paced = target * frac;
+        var up = b.better === 'up';                  // savings: more is better
+        return { b: b, spent: spent, target: target, paced: paced, up: up,
+                 over: up ? (spent < paced - 0.005) : (spent > paced + 0.005),
+                 gap: Math.abs(spent - paced) };
+      });
+
+      var offPace = rows.filter(function(r) { return r.over; })
+                        .sort(function(a, b) { return b.gap - a.gap; });
+      var onCount = rows.length - offPace.length;
+
+      // Only what is slipping gets a row. A budget that is fine is not news, and
+      // Home is not the place for non-news -- Goals already lists the full set.
+      var show = offPace.length ? offPace : rows.slice(0, 2);
+
+      host.innerHTML = '<div class="card">' +
+        '<div class="snap-rollup"><span class="n">' + onCount + ' of ' + rows.length +
+          ' on pace</span><span>' +
+          (offPace.length
+            ? offPace.length + (offPace.length === 1 ? ' needs a look' : ' need a look')
+            : 'nothing slipping') + '</span></div>' +
+        show.map(function(r) {
+          var scale = Math.max(r.target, r.spent, 1);
+          var note;
+          if (r.up) note = r.over ? fmtMoney(r.paced - r.spent) + ' behind pace' : 'ahead of pace';
+          else note = r.over ? fmtMoney(r.spent - r.paced) + ' ahead of pace'
+                             : fmtMoney(r.paced - r.spent) + ' under pace';
+          return '<div class="snap-brow">' +
+            '<div class="r"><span>' + r.b.name + '</span>' +
+              '<span class="amt">' + fmtMoney(r.spent) + ' / ' + fmtMoney(r.target) + '</span></div>' +
+            '<div class="bar-track with-target">' +
+              '<div class="bar-fill ' + (r.over ? 'bad' : 'good') +
+                '" style="width:' + Math.min(100, (r.spent / scale) * 100).toFixed(1) + '%"></div>' +
+              '<div class="bar-target" style="left:' +
+                Math.min(100, (r.paced / scale) * 100).toFixed(1) + '%"></div>' +
+            '</div>' +
+            '<div class="snap-note ' + (r.over ? 'bad' : 'good') + '">' + note + '</div>' +
+          '</div>';
+        }).join('') +
+        '<button type="button" class="snap-more" data-goto="goals">All budgets and goals ›</button>' +
+      '</div>';
+    }
+
+    function renderSnapCats(monthKey, day) {
+      var host = $('#snapCats');
+      if (!host) return;
+      // Rent tops this list every month and there is nothing to do about it, so
+      // it crowds out the rows worth a glance. Same call the old 'Top variable
+      // spend' card made; the money is still counted in the hero above.
+      var cats = snapCatsThroughDay(monthKey, day)
+                   .filter(function(c) { return !FIXED_COSTS[c.category]; })
+                   .slice(0, 5);
+      if (!cats.length) { host.innerHTML = '<div class="loading">Nothing spent yet.</div>'; return; }
+      var max = cats[0].amount || 1;
+      host.innerHTML = cats.map(function(c) {
+        return '<div class="snap-cat">' +
+          '<span class="nm">' + c.category + '</span>' +
+          '<span class="bw"><span class="bar-track" style="display:block">' +
+            '<span class="bar-fill" style="display:block;width:' +
+              ((c.amount / max) * 100).toFixed(1) + '%"></span>' +
+          '</span></span>' +
+          '<span class="am">' + fmtMoney(c.amount) + '</span>' +
+        '</div>';
+      }).join('') +
+      '<div class="snap-note">Fixed costs left out — they are the same every month</div>' +
+      '<button type="button" class="snap-more" data-goto="spending">Full breakdown ›</button>';
     }
 
     function renderData(data) {
@@ -1275,6 +1614,7 @@
       budgetDefs = (data && data.error) ? [] : (data || []);
       if (data && data.error) showToast('Could not load budgets: ' + data.error, true);
       renderBudgets();
+      renderKpiGrid();   // Home's budget block waits on this same fetch.
     }).catch(function(err) {
       budgetDefs = [];
       $('#budgetList').innerHTML = '<div class="loading">Could not load budgets: ' + err + '</div>';
@@ -2504,6 +2844,14 @@
   } else {
     showGate();
   }
+
+    // Home's "see the rest" footers hand off to the tab that owns the detail.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest && e.target.closest('[data-goto]');
+      if (!btn) return;
+      var nav = document.querySelector('.nav-btn[data-page="' + btn.dataset.goto + '"]');
+      if (nav) nav.click();
+    });
 </script>
 </body>
 </html>
