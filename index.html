@@ -1410,9 +1410,15 @@
                         .sort(function(a, b) { return b.gap - a.gap; });
       var onCount = rows.length - offPace.length;
 
-      // Only what is slipping gets a row. A budget that is fine is not news, and
-      // Home is not the place for non-news -- Goals already lists the full set.
-      var show = offPace.length ? offPace : rows.slice(0, 2);
+      // Slipping budgets get a row, because they need a decision. So does every
+      // "up" budget -- Savings -- even when it is FINE. Trevon, 2026-08-31: it
+      // belongs here alongside the rest. The slipping-only rule is right for a
+      // spending CAP, where no news is good news, and wrong for a target being
+      // built toward, where the progress IS the news. Keyed off better === 'up'
+      // rather than the name, so a second savings-style budget behaves the same.
+      var alwaysOn = rows.filter(function(r) { return r.up && !r.over; });
+      var show = offPace.concat(alwaysOn);
+      if (!show.length) show = rows.slice(0, 2);
 
       host.innerHTML = '<div class="card">' +
         '<div class="snap-rollup"><span class="n">' + onCount + ' of ' + rows.length +
@@ -1423,7 +1429,7 @@
         show.map(function(r) {
           var scale = Math.max(r.target, r.spent, 1);
           var note;
-          if (r.up) note = r.over ? fmtMoney(r.paced - r.spent) + ' behind pace' : 'ahead of pace';
+          if (r.up) note = fmtMoney(r.gap) + (r.over ? ' behind pace' : ' ahead of pace');
           else note = r.over ? fmtMoney(r.spent - r.paced) + ' ahead of pace'
                              : fmtMoney(r.paced - r.spent) + ' under pace';
           return '<div class="snap-brow">' +
