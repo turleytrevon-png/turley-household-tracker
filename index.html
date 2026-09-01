@@ -1475,7 +1475,7 @@
     function renderKpiGrid() {
       if (!DASH) return;
       var k = DASH.kpis;
-      var keys = sortedMonthKeys();
+      var keys = realMonthKeys();          // "how are we doing" -- see realMonthKeys
       if (!keys.length) return;
 
       var monthKey = keys[keys.length - 1];
@@ -2478,6 +2478,34 @@
       return Object.keys(months).sort();
     }
 
+    function currentMonthKey() {
+      var d = new Date();
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+    }
+
+    // Months that have actually STARTED. A card issuer in another timezone hands us
+    // tomorrow's date every evening -- Capital One alerted a 2026-08-31 Amazon charge
+    // as "Sep. 1, 2026", because 10pm in Arizona is already September in Eastern time.
+    // One such row used to become the newest month in the ledger and hijack every
+    // screen that shows "the latest month": Shopping read $11 of a $500 budget, which
+    // is the September row on its own.
+    //
+    // The row is NOT wrong and is not filtered out of the data. What was wrong is a
+    // screen answering "how are we doing" with a month nobody has lived yet.
+    //
+    // WHICH SCREENS USE WHICH, and why -- this follows the pages' jobs:
+    //   realMonthKeys()   Home and Goals ask "how are we doing", Trends asks "how has
+    //                     this moved", Spending asks "pick a month apart", and
+    //                     txnsPerWeek asks "is this transacted often enough". None of
+    //                     those questions has an answer for a month with 30 days left
+    //                     in it -- and txnsPerWeek would divide by those 30 empty days.
+    //   sortedMonthKeys() the History finder ONLY. Filtering there would make a real
+    //                     charge unfindable, which is worse than an odd month label.
+    function realMonthKeys() {
+      var now = currentMonthKey();
+      return sortedMonthKeys().filter(function(k) { return k <= now; });
+    }
+
     function lastMonthIsPartial(keys) {
       if (!keys.length) return false;
       var last = keys[keys.length - 1];
@@ -2491,7 +2519,9 @@
 
     // --- Trends -------------------------------------------------------------
     function renderTrends() {
-      var keys = sortedMonthKeys();
+      // A month with 30 days still to run is not a data point; it would draw a stub
+      // bar beside full months and read as a collapse in spending.
+      var keys = realMonthKeys();
       if (!keys.length) { $('#trendsBody').innerHTML = '<div class="loading">No data yet.</div>'; return; }
 
       var partial = lastMonthIsPartial(keys);
@@ -2685,7 +2715,7 @@
     // single calendar month flags a problem that isn't one. Averaged over the
     // selected month and the two before it.
     function trailingAverage(monthKey, cats, n, person) {
-      var keys = sortedMonthKeys();
+      var keys = realMonthKeys();
       var i = keys.indexOf(monthKey);
       if (i < 0) return { value: 0, months: 0 };
       var window = keys.slice(Math.max(0, i - n + 1), i + 1);
@@ -2715,14 +2745,21 @@
     var WEEKLY_MIN_PER_WEEK = 4;
 
     function txnsPerWeek(cats, person) {
-      var keys = sortedMonthKeys();
+      // Counted over STARTED months only, on both sides of the division. A single
+      // future-dated row used to add a whole 30-day month to the denominator while
+      // contributing one transaction to the numerator, which diluted the rate and
+      // could strip the weekly breakdown off a budget that had earned it.
+      var keys = realMonthKeys();
       if (!keys.length) return 0;
+      var inSet = {};
+      keys.forEach(function(k) { inSet[k] = true; });
       var n = 0, days = 0;
       keys.forEach(function(k) {
         days += new Date(Number(k.slice(0, 4)), Number(k.slice(5, 7)), 0).getDate();
       });
       allTransactions.forEach(function(t) {
         if (t.amount >= 0) return;
+        if (!inSet[t.date.slice(0, 7)]) return;
         if (cats.indexOf(t.category) === -1) return;
         if (person && t.person !== person) return;
         n++;
@@ -2799,7 +2836,7 @@
         $('#budgetMonthNote').textContent = '';
         return;
       }
-      var keys = sortedMonthKeys();
+      var keys = realMonthKeys();          // "how are we doing" -- see realMonthKeys
       if (!keys.length) { host.innerHTML = '<div class="loading">No data yet.</div>'; return; }
 
       var monthKey = keys[keys.length - 1];
@@ -3059,7 +3096,8 @@
     }
 
     function initSummary() {
-      var monthKeys = sortedMonthKeys().reverse();
+      // "Pick a month apart" -- a month that has not started has nothing to pick.
+      var monthKeys = realMonthKeys().reverse();
       if (!monthKeys.length) return;
       $('#summaryMonth').innerHTML = monthKeys.map(function(k) {
         return '<option value="' + k + '">' + monthLabel(k) + '</option>';
