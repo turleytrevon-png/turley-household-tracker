@@ -712,6 +712,130 @@
     return str ? (str + city) : String(raw);
   }
 
+  // --- Refunds ---------------------------------------------------------------
+  //
+  // A refund is a POSITIVE amount sitting in a spending category. Until now every
+  // spend total simply skipped positives ("if (t.amount >= 0) return"), so a return
+  // never came back off the budget it inflated -- $719.80 of it on Shopping alone.
+  //
+  // Two separate jobs, deliberately not conflated:
+  //   1. NETTING decides the money. A refund is subtracted from its own category in
+  //      the month it LANDS. Never re-dated back to the purchase's month.
+  //      Trevon, 2026-08-31: "if the refund is in a separate month then place the
+  //      refund in the month it lands."
+  //   2. MATCHING decides the evidence. Finding the original purchase is what proves
+  //      a positive row is a return and not income, and it is what the UI shows.
+  //      It does NOT move the money. A refund that matches nothing still nets --
+  //      otherwise the rows the matcher misses go on inflating the budget, which is
+  //      the whole defect. Measured on the live ledger: 24 of 24 matched, 2 of them
+  //      across a month boundary.
+  //
+  // 'Personal Transfers (Venmo/Zelle)' is excluded on purpose: its inflows are real
+  // money arriving from other people (Zelle from Cambree, Charles, Paden), not returns.
+  var REFUND_NEVER = {
+    'Income': 1, 'Card Payment': 1, 'Credit Card Payments': 1,
+    'Internal Savings Transfer': 1, 'Auto Loan Payment': 1, 'Credit Line Payment': 1,
+    'Personal Transfers (Venmo/Zelle)': 1
+  };
+
+  var REFUND_LOOKBACK_DAYS = 120;
+
+  // Words a bank bolts onto a merchant to say "this one came back". They are noise
+  // for matching -- "Target Deposit" and "Target" are one merchant -- so they come
+  // off before the shared normaliser runs. Leading AND trailing, because MACU does
+  // both ("return Adjustment WWW.MAC.BID", "Target Deposit").
+  // NOTE the bare \bdeposit\b is only stripped at the END. Stripping a LEADING
+  // "Deposit" would eat the "Deposit ACH TARG ... CO: TARGET DEBIT CRD" form that
+  // displayMerchant already resolves correctly through its CO: branch.
+  function stripRefundWords(s) {
+    var prev;
+    do {
+      prev = s;
+      s = s.replace(/^\s*(?:return\s+adjustment|credit\s+voucher|refund|reversal|(?:withdrawal|deposit)\s+adjus\w*|adjustment)\s+/i, '')
+           .replace(/\s+(?:deposit|refund|credit)\s*$/i, '')
+           .trim();
+    } while (s !== prev);
+    return s;
+  }
+
+  // The match key. displayMerchant is the ONE merchant normaliser in this app --
+  // reuse it, never fork it. It appends " (City ST)" for display; a key must not
+  // care which store the return was walked into, so that comes back off.
+  function refundKey(raw, category) {
+    var name = displayMerchant(stripRefundWords(String(raw == null ? '' : raw)), category);
+    return name.replace(/\s*\([^)]*\)\s*$/, '').replace(/\s+/g, ' ').trim().toUpperCase();
+  }
+
+  function isRefund(t) { return t.amount > 0 && !REFUND_NEVER[t.category]; }
+
+  function daysBetween(isoA, isoB) {
+    return Math.round((Date.parse(isoB + 'T00:00:00') - Date.parse(isoA + 'T00:00:00')) / 86400000);
+  }
+
+  // Pairs every refund with the most recent purchase of the same merchant and
+  // category that still has room to cover it.
+  //
+  // A purchase is DRAINED, not consumed whole: one Target receipt can be returned in
+  // two pieces ($30.87 + $4.12 against one $89.26 trip) and the Ramp account-verify
+  // pair is a single $0.94 debit refunded as $0.02 + $0.92. Consuming the purchase on
+  // first use would leave the second refund permanently unmatched.
+  //
+  // Returns a map keyed by the refund's index in `rows`.
+  function matchRefunds(rows) {
+    var purchases = [], out = {};
+    for (var i = 0; i < rows.length; i++) {
+      var t = rows[i];
+      if (t.amount < 0) purchases.push({ i: i, t: t, key: refundKey(t.merchant, t.category), left: -t.amount });
+    }
+    purchases.sort(function(a, b) { return a.t.date < b.t.date ? -1 : (a.t.date > b.t.date ? 1 : 0); });
+
+    // Oldest refund first, so an early return claims the purchase it actually came from.
+    var refunds = [];
+    for (var j = 0; j < rows.length; j++) if (isRefund(rows[j])) refunds.push(j);
+    refunds.sort(function(a, b) { return rows[a].date < rows[b].date ? -1 : (rows[a].date > rows[b].date ? 1 : 0); });
+
+    refunds.forEach(function(idx) {
+      var r = rows[idx], key = refundKey(r.merchant, r.category), best = null;
+      for (var p = 0; p < purchases.length; p++) {
+        var c = purchases[p];
+        if (c.key !== key) continue;
+        if (c.t.category !== r.category) continue;
+        if (c.t.date > r.date) continue;
+        if (daysBetween(c.t.date, r.date) > REFUND_LOOKBACK_DAYS) continue;
+        if (c.left < r.amount - 0.005) continue;
+        // Tie-break, stated rather than left to array order: the most RECENT
+        // purchase that still fits, and among same-date purchases the TIGHTEST
+        // one. Three Apple.com Bill charges sat on 2026-02-14 and a $4.99 credit
+        // could have paired with any of them; without this the answer was
+        // whichever row the sheet happened to list first.
+        if (!best || c.t.date > best.t.date ||
+            (c.t.date === best.t.date && c.left < best.left)) best = c;
+      }
+      if (best) best.left -= r.amount;
+      out[idx] = {
+        matched: !!best,
+        key: key,
+        purchaseIndex: best ? best.i : null,
+        purchaseDate: best ? best.t.date : null,
+        purchaseAmount: best ? -best.t.amount : null,
+        // Netting month is ALWAYS the refund's own month. This flag exists so the UI
+        // can say "refund of a June purchase" on a July row -- not to move the money.
+        crossMonth: best ? best.t.date.slice(0, 7) !== r.date.slice(0, 7) : false
+      };
+    });
+    return out;
+  }
+
+  // Stamps each refund's pairing onto the row itself, rather than handing indexes
+  // around. The History list filters and re-sorts its rows constantly, so an index
+  // into the original array stops meaning anything two clicks in; a property on the
+  // object survives all of it. Call this every time allTransactions is replaced.
+  function annotateRefunds(rows) {
+    var m = matchRefunds(rows);
+    for (var i = 0; i < rows.length; i++) rows[i].refund = m[i] || null;
+    return rows;
+  }
+
   function attrEscape(s) { return String(s).replace(/"/g, '&quot;'); }
 
   function apiGet(action, params) {
@@ -1157,7 +1281,7 @@
         // blame Home for a missing extra.
         if (allTransactions.length) { renderKpiGrid(); return; }
         apiGet('transactions').then(function(txns) {
-          if (txns && !txns.error && txns.length) { allTransactions = txns; renderKpiGrid(); }
+          if (txns && !txns.error && txns.length) { allTransactions = annotateRefunds(txns); renderKpiGrid(); }
         }).catch(function() {});
       }).catch(function(err) {
         showToast('Could not load data: ' + err, true);
@@ -1214,7 +1338,13 @@
     // Is this row day-to-day spending? Shared by the three tallies below so they
     // cannot disagree about what counts.
     function snapIsSpend(t) {
-      if (-t.amount <= 0) return false;                 // inflows and refunds
+      // A POSITIVE row counts only when it is a refund -- a return coming back off
+      // the category it inflated, carried through as negative spend because every
+      // caller below tallies -t.amount. Other inflows are not negative spending and
+      // must never net: Income, a Zelle arriving from a friend, or the credit leg of
+      // a card payment. isRefund() draws that line (see REFUND_NEVER).
+      if (t.amount === 0) return false;
+      if (t.amount > 0 && !isRefund(t)) return false;
       if (t.account === 'checking') return !SNAP_NOT_SPEND[t.category];
       return !CREDIT_EXCLUDE[t.category];               // the credit leg of a card payment
     }
@@ -1310,7 +1440,11 @@
       allTransactions.forEach(function(t) {
         if (t.date.slice(0, 7) !== monthKey) return;
         if (Number(t.date.slice(8, 10)) > dayCap) return;
-        if (t.amount >= 0) return;
+        // Refunds NET. They used to be skipped outright, which left $719.80 of
+        // returns inflating Shopping. A refund is subtracted in the month it LANDS,
+        // never re-dated to the purchase's month (Trevon, 2026-08-31).
+        if (t.amount === 0) return;
+        if (t.amount > 0 && !isRefund(t)) return;
         if (cats.indexOf(t.category) === -1) return;
         total += -t.amount;
       });
@@ -1518,7 +1652,9 @@
       // rows are scaled individually and their lengths are NOT comparable to each
       // other -- which is fine, because the list is sorted by size and the dollar
       // figures are right there. The bar is free to answer something new.
-      var fallbackMax = cats[0].amount || 1;
+      // Guarded against a negative top row for the same reason as budgetBarGeometry:
+      // with refunds netting, the largest remaining category can itself be below zero.
+      var fallbackMax = cats[0].amount > 0 ? cats[0].amount : 1;
 
       host.innerHTML = cats.map(function(c) {
         var typ = snapTypicalCatByDay(monthKey, c.category, day);
@@ -1527,7 +1663,7 @@
 
         if (hasTyp) {
           scale = Math.max(typ, c.amount, 1);
-          barPct = (c.amount / scale) * 100;
+          barPct = Math.max(0, (c.amount / scale) * 100);
           tickPct = (typ / scale) * 100;
           var d = c.amount - typ;
           // Same 5% deadband as the hero. A $12 swing on groceries is noise, and
@@ -1540,7 +1676,7 @@
           // against a zero, the bar falls back to its old job -- size against the
           // biggest row -- and the row says why it has no verdict.
           scale = fallbackMax;
-          barPct = (c.amount / scale) * 100;
+          barPct = Math.max(0, (c.amount / scale) * 100);
           if (typ !== null) note = 'new this month';
         }
 
@@ -1762,17 +1898,34 @@
       return i === -1 ? '' : PAID_FALLBACK[i % PAID_FALLBACK.length];
     }
 
+    // "Jul 2" -- enough to find the purchase on this same list, no more.
+    function shortDate(iso) {
+      return MONTH_NAMES[Number(iso.slice(5, 7)) - 1] + ' ' + Number(iso.slice(8, 10));
+    }
+
     function txnRow(t) {
       var cls = Number(t.amount) < 0 ? 'negative' : 'positive';
       var badge = t.account === 'credit' ? 'Credit Card' : 'Checking';
       // paidBy is WHO SWIPED, from the card. Distinct from t.person, which is whose
       // budget it belongs to -- a Joint row still knows who paid.
       var tint = paidColor(t.paidBy);
+      // What the match is FOR. The row already showed a green number; it never said
+      // that the number is a RETURN, which purchase it came off, or -- the case worth
+      // seeing -- that the purchase sat in a different month from the credit. The
+      // money nets in the month the refund landed either way; this line only reports.
+      var meta = t.date + ' · ' + badge + ' · ' + t.category;
+      if (t.refund) {
+        meta += ' · ' + (t.refund.matched
+          ? 'refund of ' + shortDate(t.refund.purchaseDate) + ' ' +
+            fmtMoney(t.refund.purchaseAmount) +
+            (t.refund.crossMonth ? ' (last month)' : '')
+          : 'refund, no matching purchase found');
+      }
       return '<div class="txn-row">' +
         '<span class="who"' + (tint ? ' style="background:' + tint + '"' : '') + '></span>' +
         '<div class="txn-main">' +
           '<div class="txn-merchant">' + displayMerchant(t.merchant, t.category) + '</div>' +
-          '<div class="txn-meta">' + t.date + ' · ' + badge + ' · ' + t.category + '</div>' +
+          '<div class="txn-meta">' + meta + '</div>' +
         '</div>' +
         '<div class="txn-amount ' + cls + '">' + fmtMoney(t.amount) + '</div>' +
       '</div>';
@@ -2139,7 +2292,7 @@
     function loadTransactions() {
       apiGet('transactions').then(function(data) {
         if (data.error) { $('#txnList').innerHTML = '<div class="loading">' + data.error + '</div>'; return; }
-        allTransactions = data;
+        allTransactions = annotateRefunds(data);
         initTxnMonths();
         applyTxnFilters();
         initSummary();
@@ -2480,7 +2633,11 @@
       var total = 0;
       allTransactions.forEach(function(t) {
         if (t.date.slice(0, 7) !== monthKey) return;
-        if (t.amount >= 0) return;
+        // Refunds NET, in the month they land. Same rule as snapCatTotalThroughDay --
+        // these two feed the Home budget card and the Spending tab's budget bars, and
+        // the two screens must not disagree about what a category cost.
+        if (t.amount === 0) return;
+        if (t.amount > 0 && !isRefund(t)) return;
         if (cats.indexOf(t.category) === -1) return;
         if (person && t.person !== person) return;
         total += -t.amount;
@@ -2601,7 +2758,11 @@
       var scaleMax = Math.max(target * 1.25, actual);
       if (!(scaleMax > 0)) return { barPct: 0, targetPct: 0, showTick: false };
       return {
-        barPct: Math.min(100, (actual / scaleMax) * 100),
+        // Now that refunds net, a category whose returns beat its purchases lands
+        // BELOW zero. There is no drawing for a negative bar, so the fill clamps at
+        // empty -- the row's dollar figure still reports the true negative, which is
+        // the number that matters. Clamping the text instead would be a lie.
+        barPct: Math.max(0, Math.min(100, (actual / scaleMax) * 100)),
         targetPct: Math.min(100, (target / scaleMax) * 100),
         // A zero target pins the tick to the left edge, where it reads as part of
         // the track rather than a marker. The note says "target is zero" instead.
