@@ -628,6 +628,27 @@
     // Bank truncations and house style. Generic stripping cannot fix these -- only a
     // map knows that "Mesa Community C" is a cut-off word and "SAMSCLUB" is one vendor.
     [/^TARGET( DEBIT CRD)?$/i, 'Target'],
+    // The debit-card descriptors, added 2026-08-31. Six distinct Target strings were
+    // falling through to titleCaseName and rendering raw -- 'Target Debit CRD ACH Tran
+    // Leavitt,ainsley Target 2365 Queen Creek AZ Terminal Fb3704' on the History row,
+    // and each one its own merchant in any rollup. This is also what stops a refund in
+    // that format pairing with a plain 'Target' purchase, because refundKey() is built
+    // on this map: the 8/25 pair only matched because BOTH sides carried the same long
+    // string, which is luck, not behaviour.
+    //
+    // A PREFIX match is safe here where it is not for 'Apple': 'TARGET DEBIT CRD' is a
+    // bank-issued literal, not an English word that turns up in place names.
+    [/^TARGET DEBIT CRD\b/i, 'Target'],
+    // 'ACH Withdrawal COMMENT: Location - TARGET - TARGET DEBIT CRD' survives
+    // displayMerchant's cleanup as 'TARGET - TARGET DEBIT CRD'.
+    [/^TARGET\s*-\s*TARGET DEBIT CRD$/i, 'Target'],
+    // Kept SEPARATE from in-store Target, deliberately. Online and in-store are two
+    // places money goes, both land in Shopping & Retail, and the budget adds them up
+    // regardless. The state suffix goes ('TARGET.COM MN') so the two forms are one
+    // merchant. Known limit: an online order returned IN STORE produces a store-format
+    // credit that will not pair with the TARGET.COM purchase -- it still nets, it just
+    // shows as unmatched.
+    [/^TARGET\.COM\b/i, 'Target.com'],
     [/^SAM.?S ?CLUB$|^SAMSCLUB$/i, "Sam's Club"],
     [/^MESA COMMUNITY C/i, 'Mesa Community College'],
     [/^TOWN OF QUEEN CR$/i, 'Town of Queen Creek'],
