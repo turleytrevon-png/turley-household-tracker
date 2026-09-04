@@ -1,6 +1,6 @@
 {
-  "name": "Turley Household Finance Tracker",
-  "short_name": "Turley Household",
+  "name": "Household Budget Tracker",
+  "short_name": "Household Budget",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
