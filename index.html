@@ -432,7 +432,6 @@
   <p id="gate-prompt">Enter the app passphrase to continue.</p>
   <div class="gate-setup" id="gate-setup">
     <input type="url" id="setup-url" placeholder="App web URL" autocomplete="off" spellcheck="false" inputmode="url">
-    <input type="text" id="setup-name" placeholder="Household name (optional)" autocomplete="off">
   </div>
   <input type="password" id="gate-input" placeholder="Passphrase" autocomplete="off">
   <button type="button" id="gate-submit">Unlock</button>
@@ -593,6 +592,13 @@
   // passphrase lives, and renaming it signs everyone out. Not user-visible.
   var PASS_KEY = 'turley_pass';
 
+  // THE HOUSEHOLD NAME NOW COMES FROM THE BACKEND, and localStorage is only a
+  // CACHE of the last answer. (2026-09-06) It used to be a second field on the
+  // setup screen, which meant retyping it on every device and let two devices
+  // disagree about the name of one household. One backend is one household, so
+  // the backend owns the name -- see getConfig() in WebApp.js. It is cached
+  // because the name has to be on screen at boot, before any round trip.
+  //
   // ONE PLACE FOR THE HOUSEHOLD NAME. It was typed into three separate spots in
   // the markup above -- the <title>, the <h1> and the iOS home-screen meta -- so
   // renaming the app meant editing three places and knowing which three.
@@ -619,6 +625,23 @@
     } catch (e) { /* branding must never be able to break the app */ }
   }
   applyHouseholdName_();
+
+  // ASKED ONCE PER UNLOCK, AND NEVER BLOCKING. The cached name is already on
+  // screen by the time this runs, so a slow or failed answer costs nothing and
+  // is swallowed on purpose -- a title is not worth an error message in front
+  // of the numbers.
+  //
+  // An EMPTY answer means the backend has no HOUSEHOLD_NAME property set, which
+  // is not the same as "the name is blank": it keeps whatever is cached.
+  function refreshHouseholdName_() {
+    apiGet('config').then(function (cfg) {
+      var name = cfg && cfg.householdName ? String(cfg.householdName).trim() : '';
+      if (!name || name === HOUSEHOLD_NAME) return;
+      HOUSEHOLD_NAME = name;
+      localStorage.setItem(HOUSEHOLD_NAME_KEY, name);
+      applyHouseholdName_();
+    }).catch(function () {});
+  }
 
   function $(sel) { return document.querySelector(sel); }
   function $all(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
@@ -930,7 +953,6 @@
     g.classList.add('setup');
     $('#app').classList.remove('ready');
     $('#setup-url').value = API_URL;
-    $('#setup-name').value = localStorage.getItem(HOUSEHOLD_NAME_KEY) || '';
     var p = $('#gate-prompt');
     if (p) p.textContent = 'Paste the app web URL you were given, then your passphrase.';
     $('#gate-error').textContent = errorMsg || '';
@@ -956,15 +978,6 @@
     if (v.error) { $('#gate-error').textContent = v.error; return false; }
     API_URL = v.url;
     localStorage.setItem(API_URL_KEY, API_URL);
-
-    // An empty name is a legitimate answer, not a skipped step -- it keeps the
-    // generic default. So it is only written when something was actually typed.
-    var name = $('#setup-name').value.trim();
-    if (name) {
-      localStorage.setItem(HOUSEHOLD_NAME_KEY, name);
-      HOUSEHOLD_NAME = name;
-      applyHouseholdName_();
-    }
     return true;
   }
 
@@ -1006,6 +1019,7 @@
       $('#gate').classList.remove('checking');
       $('#app').classList.add('ready');
       gateBusy(false);
+      refreshHouseholdName_();
       initApp();
     }).catch(function() {
       localStorage.removeItem(PASS_KEY);
