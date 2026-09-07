@@ -294,7 +294,7 @@
   .txn-clear, .back-btn { background: none; border: none; color: var(--accent); font-weight: 500; letter-spacing: -0.01em; display: inline-flex; align-items: center; min-height: 44px; padding: 0; align-self: flex-start; }
   .txn-clear { font-size: 14px; }
   .back-btn { font-size: 15px; }
-  /* The principal/interest split is the reason this section exists -- Trevon kept the
+  /* The principal/interest split is the reason this section exists -- the owner kept the
      payment as ONE row and asked for the split shown clearly, so it is not a footnote. */
   .split { display: flex; gap: var(--s2); align-items: baseline; flex-wrap: wrap;
            margin-top: var(--s3); font-size: 13px; }
@@ -599,7 +599,7 @@
   var API_URL = localStorage.getItem(API_URL_KEY) || '';
 
   // THE ONE URL THAT IS BAKED INTO THIS PAGE, AND IT IS NOT A BACKEND.
-  // (2026-09-06, Trevon: type `turley`, not a 120-character URL -- and do not
+  // (2026-09-06, the owner: type `turley`, not a 120-character URL -- and do not
   // make the list public.) This is a separate Apps Script that maps a short
   // household name to that household's /exec URL. It holds URLs and nothing
   // else, and it hands one back only after the passphrase has been proved
@@ -717,7 +717,7 @@
     [/^TARGET( DEBIT CRD)?$/i, 'Target'],
     // The debit-card descriptors, added 2026-08-31. Six distinct Target strings were
     // falling through to titleCaseName and rendering raw -- 'Target Debit CRD ACH Tran
-    // Leavitt,ainsley Target 2365 Queen Creek AZ Terminal Fb3704' on the History row,
+    // Lastname,firstname Target 2365 Anytown AZ Terminal Fb3704' on the History row,
     // and each one its own merchant in any rollup. This is also what stops a refund in
     // that format pairing with a plain 'Target' purchase, because refundKey() is built
     // on this map: the 8/25 pair only matched because BOTH sides carried the same long
@@ -763,7 +763,7 @@
     [/^AMAZON|^AMZN/i, 'Amazon'],
     [/BOHME/i, 'Bohme'],
     [/^NELNET$/i, 'Nelnet']
-    // NOTE: no /^ZELLE/ rule. It matched "Zelle to Brett" and threw away "to Brett",
+    // NOTE: no /^ZELLE/ rule. It matched "Zelle to Landlord" and threw away "to Landlord",
     // which is the only part that says who was paid.
   ];
   var SMALL_WORDS = { of: 1, the: 1, and: 1, to: 1, at: 1, 'in': 1, on: 1, 'for': 1, a: 1, an: 1 };
@@ -781,8 +781,8 @@
   }
 
   // Categories whose name IS the answer, regardless of what the bank wrote. Rent
-  // arrives under five different wordings ("Zelle to Brett", "Withdrawal Home MACU:
-  // Payment to ZELLE BRETT from AINSLEY REY LEAVITT.", ...) and text patterns would need
+  // arrives under five different wordings ("Zelle to Landlord", "Withdrawal Home MACU:
+  // Payment to ZELLE LANDLORD from FIRSTNAME LASTNAME.", ...) and text patterns would need
   // a sixth next month. The category cannot drift.
   var CATEGORY_NAME = { 'Rent/Housing': 'Rent' };
 
@@ -829,7 +829,7 @@
   // Two separate jobs, deliberately not conflated:
   //   1. NETTING decides the money. A refund is subtracted from its own category in
   //      the month it LANDS. Never re-dated back to the purchase's month.
-  //      Trevon, 2026-08-31: "if the refund is in a separate month then place the
+  //      the owner, 2026-08-31: "if the refund is in a separate month then place the
   //      refund in the month it lands."
   //   2. MATCHING decides the evidence. Finding the original purchase is what proves
   //      a positive row is a return and not income, and it is what the UI shows.
@@ -1170,7 +1170,7 @@
   // just noise. Colour is spent on the one thing that means something here: the
   // change column, red for spending up and green for down.
   var SPARK_COLOR = '#4f8ef7';
-  // A lighter shade for the scrubbed bar -- Trevon's request. Lighter rather than a
+  // A lighter shade for the scrubbed bar -- the owner's request. Lighter rather than a
   // different hue, so the highlight reads as "this one" and not as another series.
   var SPARK_HILITE = '#a8caff';
   var AXIS_TEXT = '#6d7f93';
@@ -1692,7 +1692,7 @@
         if (Number(t.date.slice(8, 10)) > dayCap) return;
         // Refunds NET. They used to be skipped outright, which left $719.80 of
         // returns inflating Shopping. A refund is subtracted in the month it LANDS,
-        // never re-dated to the purchase's month (Trevon, 2026-08-31).
+        // never re-dated to the purchase's month (the owner, 2026-08-31).
         if (t.amount === 0) return;
         if (t.amount > 0 && !isRefund(t)) return;
         if (cats.indexOf(t.category) === -1) return;
@@ -1844,7 +1844,7 @@
       var onCount = rows.length - offPace.length;
 
       // Slipping budgets get a row, because they need a decision. So does every
-      // "up" budget -- Savings -- even when it is FINE. Trevon, 2026-08-31: it
+      // "up" budget -- Savings -- even when it is FINE. the owner, 2026-08-31: it
       // belongs here alongside the rest. The slipping-only rule is right for a
       // spending CAP, where no news is good news, and wrong for a target being
       // built toward, where the progress IS the news. Keyed off better === 'up'
@@ -1895,7 +1895,7 @@
       // The bar used to measure each row against the BIGGEST row, which made the
       // top row permanently full and told you nothing the dollar figure did not
       // already say -- and it invited the reading "share of budget", which it was
-      // not. Trevon asked what the bars meant, which was the answer: nothing.
+      // not. the owner asked what the bars meant, which was the answer: nothing.
       //
       // Now each row is measured against ITS OWN normal for this point in the
       // month, the same question the hero asks about total spend. That means the
@@ -2000,7 +2000,7 @@
     //
     // The payment stays ONE row in History, matching the bank statement. The split
     // comes from the Loans tab, which is where the bank's own PRINCIPAL/INTEREST
-    // figures are recorded. Trevon, 2026-08-24: "one row with the split stored
+    // figures are recorded. the owner, 2026-08-24: "one row with the split stored
     // alongside it. I still want it shown clearly in the app."
     function renderLoans(loans) {
       if (!loans || !loans.length) return;          // section stays hidden
@@ -2018,7 +2018,7 @@
         // must not be described as "of $X paid off" -- that would imply the balance was
         // once a loan of that size and is being retired. Say what it actually is.
         if (L.kind === 'card') {
-          // When the baseline IS the credit limit -- Trevon's choice, 2026-08-24 -- the
+          // When the baseline IS the credit limit -- the owner's choice, 2026-08-24 -- the
           // bar and the utilisation figure are exact complements: 6.6% cleared and 93.4%
           // used always sum to 100. Printing both states one fact twice in opposite
           // directions, which reads like a contradiction. So show utilisation only when
@@ -2042,7 +2042,7 @@
         if (L.lastPrincipal !== null && L.lastInterest !== null) {
           // The total is the SUM OF THE PARTS, never L.payment. Those are different
           // numbers the moment the payment field carries a PLAN rather than history --
-          // which happened the day the 9044 payment was set to the intended $500 while
+          // which happened the day the card-NNNN payment was set to the intended $500 while
           // the split still described an actual $200 payment. Rendering "$500.00 =
           // $89.27 + $110.73" would have shipped a line that visibly fails to add up.
           var lastTotal = L.lastPrincipal + L.lastInterest;
@@ -2122,7 +2122,7 @@
 
     var allTransactions = [];
 
-    // Trevon blue, Ainsley pink -- his choice. Anyone else falls back to a palette by
+    // Owner blue, second cardholder pink -- the owner's choice. Anyone else falls back to a palette by
     // sorted position, so the feature keeps working if a name changes or a third person
     // appears, instead of silently going grey. Hardcoding the names as CSS classes did
     // exactly that: the demo's fabricated people rendered every row the same colour and
@@ -2565,7 +2565,7 @@
     // Income vs Spending, and the Month tab's full category breakdown).
     // Student Loans and Insurance are the same kind of thing when you want them.
     // Mirrored by FIXED_COSTS in WebApp.gs, which ranks the Dashboard KPI.
-    // Student loans joined rent 2026-08-24 (Trevon: "student loans are fixed").
+    // Student loans joined rent 2026-08-24 (the owner: "student loans are fixed").
     // These are excluded from the VARIABLE-spend ranking only -- they are still real
     // money out and still counted in total spend.
     var FIXED_COSTS = { 'Rent/Housing': true, 'Student Loans': true };
@@ -2582,7 +2582,7 @@
       'Credit Line Payment': true,
       'Card Payment': true,
       'Income': true,
-      // Paying down card 9044. Excluded from spend for the same reason as the auto loan:
+      // Paying down card NNNN. Excluded from spend for the same reason as the auto loan:
       // it retires principal, it consumes nothing. 'Card Interest' is deliberately NOT
       // here -- interest IS consumption, and excluding it would hide $870/year of real
       // cost. Splitting them is also what prevents double-counting: the payment is
@@ -2591,8 +2591,8 @@
     };
 
     // Money that LEAVES CHECKING but is still ours afterwards. A savings transfer is
-    // not a loss, and neither is retiring principal on the Lexus or on card 9044 --
-    // Trevon's own correction: "stuff in the savings account should still be counted
+    // not a loss, and neither is retiring principal on the car loan or on card NNNN --
+    // the owner's own correction: "stuff in the savings account should still be counted
     // as our money".
     //
     // 'Credit Card Payments' and 'Card Payment' are deliberately NOT here. They settle
@@ -2687,7 +2687,7 @@
       // paydown — that spending was already counted the day it happened. Debt
       // paydown is the auto loan plus the L0074 credit line. Net cash flow counts credit
       // spending when it HAPPENS rather than when the card gets paid.
-      // Card 9044's paydown IS debt paydown -- its spending was never tracked here, so
+      // Card NNNN's paydown IS debt paydown -- its spending was never tracked here, so
       // retiring the balance is money genuinely leaving the household, not a transfer.
       var debtPaydown = autoLoan + creditLine + cardPaydown;
       var netCashFlow = income - checkingSpend - creditSpend - autoLoan - creditLine -
@@ -3128,7 +3128,7 @@
         // Qualify on the HOUSEHOLD count, deliberately not the filtered one. Whether a
         // category is spent daily is a property of the category, not of who is being
         // looked at -- and person-scoped counts fall under the threshold for both cards
-        // (Shopping 6.03/wk household but 0.13 for Trevon), so filtering by person made
+        // (Shopping 6.03/wk household but 0.13 for the owner), so filtering by person made
         // the control vanish entirely. The PANEL still respects the filter; only the
         // decision to offer it is household-wide.
         var weekly = b.method !== 'avg3' &&
@@ -3280,7 +3280,7 @@
 
     // Hidden until the data can actually attribute a row to somebody. Every row
     // written before the Card column existed is 'Unassigned', so showing a
-    // Trevon/Ainsley control today would be a control that does nothing.
+    // an owner/second-cardholder control today would be a control that does nothing.
     function renderPersonFilter() {
       var people = peopleInData();
       var el = $('#personFilter');
