@@ -423,6 +423,14 @@
   #gate .gate-link { display: none; width: auto; max-width: none; padding: var(--s3) var(--s4);
     margin-top: var(--s3); background: none; color: var(--muted); font-size: 13px; font-weight: 500; }
   #gate.has-setup:not(.setup):not(.checking) .gate-link { display: inline-block; }
+  /* TWO WAYS INTO THE SAME SCREEN, ONE VISIBLE AT A TIME. The household name is
+     the everyday path; the raw URL is the escape hatch for a household that is
+     not in the directory, and for the day the directory is unreachable. */
+  #gate-setup #setup-url { display: none; }
+  #gate-setup.url-mode #setup-url { display: block; }
+  #gate-setup.url-mode #setup-household { display: none; }
+  #gate .gate-alt { width: auto; max-width: none; padding: var(--s2) var(--s3);
+    margin: 0 0 var(--s3); background: none; color: var(--muted); font-size: 13px; font-weight: 500; }
 </style>
 </head>
 <body>
@@ -431,7 +439,9 @@
   <h1>Household Budget</h1>
   <p id="gate-prompt">Enter the app passphrase to continue.</p>
   <div class="gate-setup" id="gate-setup">
+    <input type="text" id="setup-household" placeholder="Household" autocomplete="off" spellcheck="false" autocapitalize="none">
     <input type="url" id="setup-url" placeholder="App web URL" autocomplete="off" spellcheck="false" inputmode="url">
+    <button type="button" class="gate-alt" id="setup-alt"></button>
   </div>
   <input type="password" id="gate-input" placeholder="Passphrase" autocomplete="off">
   <button type="button" id="gate-submit">Unlock</button>
@@ -587,6 +597,28 @@
   // once. That was the trade chosen on 2026-09-04.
   var API_URL_KEY = 'api_url';
   var API_URL = localStorage.getItem(API_URL_KEY) || '';
+
+  // THE ONE URL THAT IS BAKED INTO THIS PAGE, AND IT IS NOT A BACKEND.
+  // (2026-09-06, Trevon: type `turley`, not a 120-character URL -- and do not
+  // make the list public.) This is a separate Apps Script that maps a short
+  // household name to that household's /exec URL. It holds URLs and nothing
+  // else, and it hands one back only after the passphrase has been proved
+  // against that household's own backend, so an anonymous caller learns
+  // nothing -- not a URL, not even whether a name exists.
+  //
+  // THIS DOES NOT REVERSE THE 2026-09-04 DECISION, and the distinction is the
+  // whole reason it was acceptable: what that decision removed was a page that
+  // silently pointed at ONE household's data. This URL points at no household's
+  // data and reads nothing without a passphrase.
+  //
+  // A DEAD DIRECTORY MUST NEVER BE A LOCKED DOOR. Every path that touches it
+  // falls back to the raw-URL field, and an install that already has its URL
+  // never calls it at all.
+  var DIRECTORY_URL = 'https://script.google.com/macros/s/AKfycbyOxM6zGsPvU7ztciTr8bEi8TVG56f6Qtdli8NeHg5Yau7spt-PqyTCwn7TPw9yCBkS/exec';
+
+  // Remembered so "Change setup" comes back in the mode it was last used in,
+  // and so a household that types a raw URL is never asked for a name again.
+  var HOUSEHOLD_KEY = 'household_id';
 
   // NOT renamed, on purpose: this key is where the existing installs' stored
   // passphrase lives, and renaming it signs everyone out. Not user-visible.
@@ -953,10 +985,59 @@
     g.classList.add('setup');
     $('#app').classList.remove('ready');
     $('#setup-url').value = API_URL;
-    var p = $('#gate-prompt');
-    if (p) p.textContent = 'Paste the app web URL you were given, then your passphrase.';
+    $('#setup-household').value = localStorage.getItem(HOUSEHOLD_KEY) || '';
+    // A browser that was last set up by URL comes back to the URL field. Anyone
+    // else starts on the short name, which is the path that exists to be typed
+    // on a phone.
+    setSetupMode_(!!API_URL && !localStorage.getItem(HOUSEHOLD_KEY));
     $('#gate-error').textContent = errorMsg || '';
     gateBusy(false);
+  }
+
+  // urlMode true shows the raw /exec field; false shows the short household
+  // name. The prompt and the escape-hatch link are part of the mode, so both
+  // always describe the field actually on screen.
+  var setupUrlMode = false;
+  function setSetupMode_(urlMode) {
+    setupUrlMode = !!urlMode;
+    $('#gate-setup').classList.toggle('url-mode', setupUrlMode);
+    $('#setup-alt').textContent = setupUrlMode
+      ? 'Use a household name instead'
+      : 'Use an app web URL instead';
+    var p = $('#gate-prompt');
+    if (p) {
+      p.textContent = setupUrlMode
+        ? 'Paste the app web URL you were given, then your passphrase.'
+        : 'Enter your household name and passphrase.';
+    }
+  }
+
+  /**
+   * Trade a household name plus passphrase for that household's backend URL.
+   *
+   * POST, NOT GET, because the passphrase is in the body: a GET would put it in
+   * a URL, and from there into browser history and any log along the way.
+   * text/plain keeps it a CORS "simple request", so there is no preflight --
+   * Apps Script does not answer OPTIONS.
+   *
+   * Resolves to a URL string, or rejects with a message fit to show a person.
+   */
+  function directoryLookup_(name, pass) {
+    return fetch(DIRECTORY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ name: name, pass: pass })
+    }).then(function (r) {
+      return r.json();
+    }).catch(function () {
+      // A PARSE FAILURE HERE IS USUALLY NOT A BUG. An unauthorised or
+      // misconfigured deployment answers with Google's sign-in HTML, and a
+      // phone that dropped its connection answers with nothing at all.
+      throw new Error('Could not reach the sign-in service. You can enter the app web URL instead.');
+    }).then(function (data) {
+      if (data && data.url) return data.url;
+      throw new Error((data && data.error) || 'That household name and passphrase do not match.');
+    });
   }
 
   // A HAND-TYPED URL IS CHECKED BEFORE IT IS STORED. It is the one field here
@@ -978,6 +1059,9 @@
     if (v.error) { $('#gate-error').textContent = v.error; return false; }
     API_URL = v.url;
     localStorage.setItem(API_URL_KEY, API_URL);
+    // A URL typed by hand replaces any remembered household name, so "Change
+    // setup" comes back to the field this browser actually used.
+    localStorage.removeItem(HOUSEHOLD_KEY);
     return true;
   }
 
@@ -1031,14 +1115,44 @@
     // A second tap while one is in flight would fire a second round trip and, on
     // the slow path, a second initApp() behind it.
     if (gateInFlight) return;
+    var inSetup = $('#gate').classList.contains('setup');
+    var pass = $('#gate-input').value.trim();
+    if (!pass) { $('#gate-error').textContent = 'Enter your passphrase.'; return; }
+
+    // THE HOUSEHOLD PATH RESOLVES THE URL FIRST, and only then unlocks -- the
+    // lookup needs the passphrase, so nothing can be stored until it comes back.
+    // NOTHING IS WRITTEN ON A REFUSAL: a wrong name leaves this browser exactly
+    // as it was, rather than pointed at a backend it cannot open.
+    if (inSetup && !setupUrlMode) {
+      var name = $('#setup-household').value.trim();
+      if (!name) { $('#gate-error').textContent = 'Enter your household name.'; return; }
+      gateBusy(true);
+      $('#gate-error').textContent = '';
+      directoryLookup_(name, pass).then(function (url) {
+        API_URL = url;
+        localStorage.setItem(API_URL_KEY, url);
+        localStorage.setItem(HOUSEHOLD_KEY, name.toLowerCase());
+        $('#gate').classList.remove('setup');
+        tryUnlock(pass);
+      }).catch(function (err) {
+        gateBusy(false);
+        $('#gate-error').textContent = err.message;
+      });
+      return;
+    }
+
     // ON THE SETUP SCREEN THE URL IS STORED BEFORE THE PASSPHRASE IS CHECKED,
     // because checking it IS a round trip to that URL -- there is nothing to
     // check against until it is saved. A rejected URL stops here and writes
     // nothing.
-    if ($('#gate').classList.contains('setup') && !saveSetup()) return;
-    var pass = $('#gate-input').value.trim();
-    if (!pass) { $('#gate-error').textContent = 'Enter your passphrase.'; return; }
+    if (inSetup && !saveSetup()) return;
     tryUnlock(pass);
+  });
+
+  $('#setup-alt').addEventListener('click', function() {
+    if (gateInFlight) return;
+    setSetupMode_(!setupUrlMode);
+    $('#gate-error').textContent = '';
   });
 
   $('#gate-change').addEventListener('click', function() {
