@@ -646,6 +646,11 @@
   // apple-mobile-web-app-title meta instead, which applyHouseholdName_ does set.
   var HOUSEHOLD_NAME_KEY = 'household_name';
   var HOUSEHOLD_NAME = localStorage.getItem(HOUSEHOLD_NAME_KEY) || 'Household Budget';
+  // Cached copy of the backend's personColours -- see paidColor(). A missing or
+  // unreadable cache is an empty map, never an error.
+  var PERSON_COLOURS_KEY = 'person_colours';
+  var PERSON_COLOURS = {};
+  try { PERSON_COLOURS = JSON.parse(localStorage.getItem(PERSON_COLOURS_KEY) || '{}') || {}; } catch (e) { PERSON_COLOURS = {}; }
 
   function applyHouseholdName_() {
     try {
@@ -665,13 +670,22 @@
   //
   // An EMPTY answer means the backend has no HOUSEHOLD_NAME property set, which
   // is not the same as "the name is blank": it keeps whatever is cached.
-  function refreshHouseholdName_() {
+  function refreshConfig_() {
     apiGet('config').then(function (cfg) {
-      var name = cfg && cfg.householdName ? String(cfg.householdName).trim() : '';
-      if (!name || name === HOUSEHOLD_NAME) return;
-      HOUSEHOLD_NAME = name;
-      localStorage.setItem(HOUSEHOLD_NAME_KEY, name);
-      applyHouseholdName_();
+      if (!cfg) return;
+      var name = cfg.householdName ? String(cfg.householdName).trim() : '';
+      if (name && name !== HOUSEHOLD_NAME) {
+        HOUSEHOLD_NAME = name;
+        localStorage.setItem(HOUSEHOLD_NAME_KEY, name);
+        applyHouseholdName_();
+      }
+      // Colours take effect on the next render; the cache makes the NEXT open
+      // right from the first paint. An empty map from the backend means "no
+      // opinion" and leaves the cache alone, same rule as the name.
+      if (cfg.personColours && typeof cfg.personColours === 'object' && Object.keys(cfg.personColours).length) {
+        PERSON_COLOURS = cfg.personColours;
+        localStorage.setItem(PERSON_COLOURS_KEY, JSON.stringify(PERSON_COLOURS));
+      }
     }).catch(function () {});
   }
 
@@ -738,7 +752,6 @@
     [/^TARGET\.COM\b/i, 'Target.com'],
     [/^SAM.?S ?CLUB$|^SAMSCLUB$/i, "Sam's Club"],
     [/^MESA COMMUNITY C/i, 'Mesa Community College'],
-    [/^TOWN OF QUEEN CR$/i, 'Town of Queen Creek'],
     [/^DEPT EDUCATION$/i, 'Dept of Education'],
     [/^MARICOPA AMBULAN/i, 'Maricopa Ambulance'],
     [/MAC\.BID/i, 'Mac.bid'],
@@ -1103,7 +1116,7 @@
       $('#gate').classList.remove('checking');
       $('#app').classList.add('ready');
       gateBusy(false);
-      refreshHouseholdName_();
+      refreshConfig_();
       initApp();
     }).catch(function() {
       localStorage.removeItem(PASS_KEY);
@@ -2138,12 +2151,20 @@
     // and money out -- so a THIRD person would render in the same green as income.
     // That is worse than repeating a colour and needs four real slots before this
     // is used by a household with more than two card-holders.
-    var PAID_TINT = { trevon: 'var(--paid-1)', ainsley: 'var(--paid-2)' };
+    // WHICH PERSON GETS WHICH COLOUR IS PER-HOUSEHOLD CONFIG, NOT CODE.
+    // (2026-09-07) It used to be two first names hardcoded here, in a public
+    // file. It now arrives from the backend's `config` action as
+    // personColours -- lower-case first name -> 'blue' | 'pink' -- set once
+    // per household in Script Property PERSON_COLOURS, and cached beside the
+    // household name so it is right at boot. Anyone not in the map falls
+    // through to PAID_FALLBACK by position, exactly as before.
+    var COLOUR_SLOT = { blue: 'var(--paid-1)', pink: 'var(--paid-2)' };
     var PAID_FALLBACK = ['var(--paid-1)', 'var(--paid-2)', 'var(--pos)', 'var(--neg)'];
     function paidColor(name) {
       if (!name || name === 'Unassigned') return '';
       var key = String(name).toLowerCase();
-      if (PAID_TINT[key]) return PAID_TINT[key];
+      var slot = COLOUR_SLOT[PERSON_COLOURS[key]];
+      if (slot) return slot;
       var i = peopleInData().indexOf(name);
       return i === -1 ? '' : PAID_FALLBACK[i % PAID_FALLBACK.length];
     }
