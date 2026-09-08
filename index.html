@@ -980,8 +980,61 @@
   // object survives all of it. Call this every time allTransactions is replaced.
   function annotateRefunds(rows) {
     var m = matchRefunds(rows);
-    for (var i = 0; i < rows.length; i++) rows[i].refund = m[i] || null;
+    for (var i = 0; i < rows.length; i++) {
+      rows[i].refund = m[i] || null;
+      rows[i].spendAmount = rows[i].amount;
+      rows[i].refundedSameMonth = 0;
+      rows[i].offsetAtSource = false;
+      rows[i].fullyRefunded = false;
+    }
+
+    // SAME-MONTH pairs are cancelled AT SOURCE, not netted downstream (the owner,
+    // 2026-09-08, on a $128.02 NordVPN charge refunded six days later: "the nord vpn
+    // purchase in subscriptions has been refunded but is horribly messing up the
+    // subscription bucket"). Netting alone gave the right MONTH TOTAL and the wrong
+    // picture everywhere else: refunds were 33% of August's Entertainment &
+    // Subscriptions against 1-12% in every other bucket of the year, the outflow-only
+    // charts still drew the full $390.77 while the list under them netted to $262.75,
+    // and the month then read "under your usual" on the strength of a buy-and-cancel.
+    //
+    // The offset moves the debit toward zero and zeroes the credit, so ANY tally that
+    // already netted returns a byte-identical figure -- only the gross-only paths
+    // change, which is the whole point. CROSS-MONTH refunds are untouched and still
+    // net in the month they land: that is the owner's 2026-08-31 rule and it stands.
+    // Same-month was never "a separate month", so this does not reopen it.
+    //
+    // A PARTIAL return must reduce the purchase, never delete it. Deleting the row for
+    // the $89.26 Target trip refunded as $30.87 + $4.12 would have taken $54.27 of real
+    // spend out of the bucket with it.
+    for (var j = 0; j < rows.length; j++) {
+      var r = m[j];
+      if (!r || !r.matched || r.crossMonth) continue;
+      var p = rows[r.purchaseIndex];
+      p.spendAmount += rows[j].amount;          // amount > 0, so the debit shrinks
+      p.refundedSameMonth += rows[j].amount;
+      rows[j].spendAmount = 0;
+      rows[j].offsetAtSource = true;
+    }
+
+    // -89.26 + 30.87 + 4.12 is -54.269999999999996 in binary floating point, and a
+    // fully drained purchase lands on -7.1e-15 rather than 0. Round before anything
+    // compares against zero.
+    for (var k = 0; k < rows.length; k++) {
+      rows[k].spendAmount = Math.round(rows[k].spendAmount * 100) / 100;
+      if (rows[k].spendAmount === 0 && rows[k].amount < 0 && rows[k].refundedSameMonth > 0) {
+        rows[k].fullyRefunded = true;
+      }
+    }
     return rows;
+  }
+
+  // The amount a SPEND view should use. t.amount stays the ledger's own figure --
+  // History still shows every row exactly as the bank reported it -- and this is the
+  // figure that answers "what did this cost us". They differ only on a same-month
+  // refund pair. Falls back to t.amount so a row that never went through
+  // annotateRefunds (a test fixture, a fresh fetch mid-render) still totals.
+  function spendAmt(t) {
+    return (t && t.spendAmount != null) ? t.spendAmount : (t ? t.amount : 0);
   }
 
   function attrEscape(s) { return String(s).replace(/"/g, '&quot;'); }
@@ -2277,6 +2330,17 @@
             (t.refund.crossMonth ? ' (last month)' : '')
           : 'refund, no matching purchase found');
       }
+      // Both halves of a same-month pair stay VISIBLE here. History is the ledger, not
+      // a spend view -- hiding a row the bank really posted is the one thing that would
+      // cost trust in every other number on the screen. They are labelled instead, and
+      // left out of the totals and the charts.
+      if (t.offsetAtSource) {
+        meta += ' · not counted as spending';
+      } else if (t.fullyRefunded) {
+        meta += ' · fully refunded, not counted as spending';
+      } else if (t.refundedSameMonth > 0) {
+        meta += ' · counted as ' + fmtMoney(-spendAmt(t)) + ' after returns';
+      }
       return '<div class="txn-row">' +
         '<span class="who"' + (tint ? ' style="background:' + tint + '"' : '') + '></span>' +
         '<div class="txn-main">' +
@@ -2319,11 +2383,11 @@
     }
 
     function txnChartData(list, oneMonth) {
-      // Outflows only, matching the sparkline this is the big version of. A
-      // refund still shows in the list below, so bars and list can disagree by
-      // the refund amount — stated in the note rather than silently netted,
-      // because netting here would make the two charts contradict each other.
-      var spend = list.filter(function(t) { return Number(t.amount) < 0; });
+      // Outflows only, matching the sparkline this is the big version of -- but on
+      // spendAmt, so a same-month return is already off the bar it inflated. A
+      // CROSS-MONTH refund still nets in its own month rather than on a bar here, so
+      // bars and list can still disagree by that amount; the note says so.
+      var spend = list.filter(function(t) { return Number(spendAmt(t)) < 0; });
       // In daily mode, confine to the charted month here rather than trusting the
       // caller to have filtered already — otherwise July 3rd's spend lands on
       // August 3rd's bar, which is exactly the kind of wrong that looks right.
@@ -2336,7 +2400,7 @@
         var byDay = {}, rowsByDay = {};
         spend.forEach(function(t) {
           var d = Number(t.date.slice(8, 10));
-          byDay[d] = (byDay[d] || 0) + (-t.amount);
+          byDay[d] = (byDay[d] || 0) + (-spendAmt(t));
           (rowsByDay[d] = rowsByDay[d] || []).push(t);
         });
         for (var d = 1; d <= days; d++) {
@@ -2346,7 +2410,7 @@
         var byMonth = {}, rowsByMonth = {};
         spend.forEach(function(t) {
           var k = t.date.slice(0, 7);
-          byMonth[k] = (byMonth[k] || 0) + (-t.amount);
+          byMonth[k] = (byMonth[k] || 0) + (-spendAmt(t));
           (rowsByMonth[k] = rowsByMonth[k] || []).push(t);
         });
         keys = Object.keys(byMonth).sort();
@@ -2389,7 +2453,7 @@
       var LINE_CAP = 10;
       if (!d.count) { host.innerHTML = ''; return; }
 
-      var refunds = 'Outflows only \u2014 a refund shows in the list below but not in the bars.';
+      var refunds = 'Outflows only \u2014 same-month returns are already taken off. A return that landed in a later month than its purchase shows in the list below but not in the bars.';
       var title, note;
       var label = aggregate ? 'All spending' : category;
       if (oneMonth) {
@@ -2441,7 +2505,7 @@
       rows.forEach(function(t) {
         var name = displayMerchant(t.merchant, t.category);
         if (!groups[name]) { groups[name] = { name: name, total: 0, n: 0 }; order.push(name); }
-        groups[name].total += -t.amount;
+        groups[name].total += -spendAmt(t);
         groups[name].n += 1;
       });
       var list = order.map(function(k) { return groups[k]; })
@@ -2734,7 +2798,7 @@
         months[m] = true;
         if (t.account === 'checking' && t.category === 'Income') income += t.amount;
         else if (CASH_MOVED[t.category]) moved += t.amount;
-        else if (t.amount < 0 && !NON_SPEND[t.category]) spend += -t.amount;
+        else if (spendAmt(t) < 0 && !NON_SPEND[t.category]) spend += -spendAmt(t);
       });
       var n = Math.max(1, Object.keys(months).length);
       var margin = (income - spend) / n;
@@ -2878,18 +2942,18 @@
       var completeCount = partial ? keys.length - 1 : keys.length;
       var totals = {};
       allTransactions.forEach(function(t) {
-        if (t.amount >= 0) return;
+        if (spendAmt(t) >= 0) return;
         if (NON_SPEND[t.category]) return;
         if (FIXED_COSTS[t.category]) return;
-        totals[t.category] = (totals[t.category] || 0) + (-t.amount);
+        totals[t.category] = (totals[t.category] || 0) + (-spendAmt(t));
       });
       var topCats = Object.keys(totals).sort(function(a, b) { return totals[b] - totals[a]; }).slice(0, 6);
       var catSeries = topCats.map(function(cat) {
         var byMonth = {};
         allTransactions.forEach(function(t) {
-          if (t.category !== cat || t.amount >= 0) return;
+          if (t.category !== cat || spendAmt(t) >= 0) return;
           var k = t.date.slice(0, 7);
-          byMonth[k] = (byMonth[k] || 0) + (-t.amount);
+          byMonth[k] = (byMonth[k] || 0) + (-spendAmt(t));
         });
         var values = keys.map(function(k) { return byMonth[k] || 0; });
         return {
@@ -3137,12 +3201,12 @@
       var total = 0;
       allTransactions.forEach(function(t) {
         if (t.date.slice(0, 7) !== monthKey) return;
-        if (t.amount >= 0) return;
+        if (spendAmt(t) >= 0) return;
         if (cats.indexOf(t.category) === -1) return;
         if (person && t.person !== person) return;
         var d = Number(t.date.slice(8, 10));
         if (d < b.start || d > b.end) return;
-        total += -t.amount;
+        total += -spendAmt(t);
       });
       return total;
     }
