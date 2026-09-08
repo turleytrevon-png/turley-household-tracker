@@ -376,6 +376,19 @@
   .loading { text-align: center; color: var(--faint); padding: var(--s7) 0; animation: pulse 1.5s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
+  /* --- Name-this-household card ------------------------------------------ */
+  .name-card { margin-bottom: var(--s4); }
+  .name-card-title { font-weight: 600; font-size: 15px; margin-bottom: var(--s1); }
+  .name-card-sub { color: var(--muted); font-size: 13px; margin: 0 0 var(--s3); }
+  .name-card-row { display: flex; gap: var(--s2); }
+  .name-card-row input { flex: 1; min-width: 0; padding: 10px var(--s3); border-radius: var(--r-ctl); border: 1px solid transparent; background: var(--panel-2, var(--panel)); color: var(--text); font-size: 15px; }
+  .name-card-row input:focus { outline: none; border-color: var(--accent); }
+  .name-card-row button { padding: 10px var(--s4); border-radius: var(--r-ctl); border: none; background: var(--accent); color: #06101f; font-weight: 600; }
+  .name-card-row button:disabled { opacity: 0.55; }
+  .name-card-msg { min-height: 16px; font-size: 13px; margin-top: var(--s2); color: var(--neg); }
+  .name-card-msg.ok { color: var(--pos); }
+  .name-card-skip { background: none; border: none; color: var(--muted); font-size: 13px; padding: var(--s2) 0 0; }
+
   /* --- Passphrase gate ---------------------------------------------------- */
   #gate { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: var(--s5); text-align: center; }
   #gate.hidden { display: none; }
@@ -459,6 +472,20 @@
     <p id="lastUpdated">Loading…</p>
   </header>
   <main>
+    <!-- NAME THIS HOUSEHOLD. Shown once, to a browser that signed in by URL and
+         has no household name yet. The page already holds the passphrase, so it
+         can prove ownership to the directory itself -- no person and no assistant
+         ever has to handle the passphrase to register a name. -->
+    <div class="card name-card" id="nameCard" hidden>
+      <div class="name-card-title">Give this household a short name</div>
+      <p class="name-card-sub">Then any phone can sign in with the name instead of the long web address. One word, lower-case, e.g. <code>smith</code>.</p>
+      <div class="name-card-row">
+        <input type="text" id="nameCardInput" placeholder="household name" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="31">
+        <button type="button" id="nameCardSave">Save</button>
+      </div>
+      <div class="name-card-msg" id="nameCardMsg"></div>
+      <button type="button" class="name-card-skip" id="nameCardSkip">Not now</button>
+    </div>
     <section id="page-dashboard" class="page active">
       <div class="snap-head">
         <div class="snap-month" id="snapMonth">&mdash;</div>
@@ -1053,6 +1080,63 @@
     });
   }
 
+  /**
+   * Register this browser's backend under a short name, so other phones can
+   * sign in with the name. POSTs {action:'register', name, url, pass} to the
+   * directory, which proves the passphrase against OUR backend before it
+   * stores anything -- see registerHousehold_ in the directory project.
+   *
+   * THE PASSPHRASE COMES FROM THIS PAGE'S OWN STORAGE, never from a person
+   * typing it again and never from an assistant. That is the whole reason the
+   * register step lives in the app rather than in the setup prompt.
+   */
+  var NAME_PROMPT_DISMISSED_KEY = 'household_name_prompt_dismissed';
+  function registerHousehold_(name) {
+    return fetch(DIRECTORY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'register', name: name, url: API_URL, pass: localStorage.getItem(PASS_KEY) || '' })
+    }).then(function (r) { return r.json(); })
+      .catch(function () { throw new Error('Could not reach the sign-in service. Try again in a minute.'); })
+      .then(function (data) {
+        if (data && data.ok) return data;
+        throw new Error((data && data.error) || 'Could not register that name.');
+      });
+  }
+
+  // Offered once, to a browser that has a backend but no name for it.
+  function maybeOfferHouseholdName_() {
+    var card = $('#nameCard'); if (!card) return;
+    var show = !!API_URL && !!DIRECTORY_URL &&
+               !localStorage.getItem(HOUSEHOLD_KEY) &&
+               !localStorage.getItem(NAME_PROMPT_DISMISSED_KEY);
+    card.hidden = !show;
+  }
+  (function wireNameCard_() {
+    var save = $('#nameCardSave'), skip = $('#nameCardSkip'), input = $('#nameCardInput'), msg = $('#nameCardMsg');
+    if (!save) return;
+    save.addEventListener('click', function () {
+      var name = String(input.value || '').trim().toLowerCase();
+      if (!/^[a-z0-9][a-z0-9-]{1,30}$/.test(name)) {
+        msg.className = 'name-card-msg'; msg.textContent = 'One word: lower-case letters, digits or hyphens, 2-31 characters.'; return;
+      }
+      save.disabled = true; msg.className = 'name-card-msg'; msg.textContent = '';
+      registerHousehold_(name).then(function () {
+        localStorage.setItem(HOUSEHOLD_KEY, name);
+        msg.className = 'name-card-msg ok';
+        msg.textContent = 'Saved. Other phones can now sign in with \u201c' + name + '\u201d and the passphrase.';
+        setTimeout(function () { $('#nameCard').hidden = true; }, 2500);
+      }).catch(function (err) {
+        save.disabled = false; msg.className = 'name-card-msg'; msg.textContent = err.message;
+      });
+    });
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') save.click(); });
+    skip.addEventListener('click', function () {
+      localStorage.setItem(NAME_PROMPT_DISMISSED_KEY, '1');
+      $('#nameCard').hidden = true;
+    });
+  })();
+
   // A HAND-TYPED URL IS CHECKED BEFORE IT IS STORED. It is the one field here
   // that can be wrong in a way the passphrase round trip cannot explain: a
   // typo surfaces several seconds later as an opaque network or parse failure,
@@ -1117,6 +1201,7 @@
       $('#app').classList.add('ready');
       gateBusy(false);
       refreshConfig_();
+      maybeOfferHouseholdName_();
       initApp();
     }).catch(function() {
       localStorage.removeItem(PASS_KEY);

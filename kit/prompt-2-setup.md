@@ -577,7 +577,7 @@ The web page unlocks with one **passphrase**, shared by everyone in my household
 
 `https://turleytrevon-png.github.io/turley-household-tracker/`
 
-It is shared — the same page serves every household — and it holds no data of its own. On its first load it asks for a **household name** and my **passphrase**. The short name is turned into my API address by a private directory that Trevon maintains; **my household is not in it until he adds it**, so on first setup tap **"Use an app web URL instead"** and paste the address from the step below. **Then have me send Trevon two things — the short name I want (one lower-case word, like `smith`) and that `/exec` address — so he can add me.** Once he has, any new phone signs in with the name alone. Both values are stored in my browser only.
+It is shared — the same page serves every household — and it holds no data of its own. On its first load it asks for a **household name** and my **passphrase**. A short name is turned into an API address by a private directory; **mine is not in it yet**, so on first setup tap **"Use an app web URL instead"** and paste the address from the step below, then my passphrase. **Once I am in, the app offers to name the household — a one-word, lower-case name like `smith`. Ask me what I want it called, then I type it into that box and tap Save.** The app registers the name itself, proving my passphrase to the directory from its own storage — **you never handle the passphrase for this, and neither does Trevon.** From then on any phone signs in with the name and the passphrase. Both values are stored in my browser only. If the name is already in use, the app says so; pick another.
 
 Open it and set it up with my own API address and passphrase.
 
