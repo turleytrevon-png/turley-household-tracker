@@ -14,6 +14,17 @@ Do not set up anything else. Do not build the app. This is the alerts and nothin
 
 > **And never explain something until you have checked the explanation.** If an account looks wrong, an alert looks missing, or a page looks empty, **find out why before telling me why.** A reason that merely fits is not the reason, and **a confident wrong one is worse than none** — I will believe it and stop looking.
 
+## Before anything — check your own toolkit
+
+**One line each, and actually try the action rather than reading a settings page.**
+
+1. **Can you drive my Chrome browser?** *Test:* open `https://www.google.com` in a new tab and tell me the title. This is how you read my bank's alert settings and set them.
+2. **Can you read my Gmail?** — either a Gmail connector, or by opening Gmail in that Chrome. This is how you prove at the end that a real alert actually landed.
+
+**If you have both, drive it yourself and only stop at the points marked as mine.**
+
+**If you have neither, this prompt still works — say so, and switch to coaching me.** You tell me exactly what to click, one screen at a time, and I read the screen back to you. **Do not silently switch modes**; tell me which one we are in, because it changes how long this takes. The main setup prompt in a few days **does** require browser control, so if it is missing, this is the moment to fix it rather than at the start of an evening's work.
+
 ## First — decide which email, and be sure before you touch a bank
 
 **Get this right before setting a single alert.** The address is entered per account and per card, so changing it later means redoing every one of them.
@@ -41,6 +52,8 @@ Do not set up anything else. Do not build the app. This is the alerts and nothin
 
 - **I keep seeing them, and the app still only reads a mailbox with nothing personal in it.**
 - The cost: about two minutes more setup, a forwarding rule, and Google's forwarding-address verification step. One more thing that can silently stop working, so it wants checking occasionally.
+
+> **If I pick this one, there is a thing to VERIFY rather than assume.** The app finds my alerts by searching for **the bank's own sending address** — `from:alerts@mybank.example`. Gmail's own forwarding normally passes the original sender through unchanged, so the search keeps working. **A rule that re-sends the mail from my address instead would break it silently, and the app would report no transactions.** So once forwarding is on, **open the forwarded copy in the destination mailbox and read who it says it is from.** If it says the bank, we are fine. If it says me, tell me — we either change the rule or go back to one of the other two shapes.
 
 **Ask which I prefer and why, then set it up that way.** If I have no strong feeling, the everyday address is the simplest thing that works — but make sure I have heard the mailbox-access point before I choose it.
 
@@ -99,6 +112,7 @@ I sign in. You **look**, and only look — **and compare what you see against wh
 - **which alerts are already switched on**, so we do not duplicate or undo something
 - what alert types this bank actually offers, and where they are filed
 - **which email addresses the bank already has verified on the account** — see the warning below
+- **the exact address the alerts are SENT FROM**, once the first one arrives — see the note at the end. The setup prompt needs it verbatim and would otherwise go hunting for it
 
 **Do not change anything in this pass.** If the session dies here, nothing is half-done and we simply start it again.
 
@@ -196,10 +210,27 @@ Then tell me:
 2. Which email they are going to
 3. **That the first real alert has landed** — and if it has not, that we are not done
 
+## Last thing, and do not skip it — hand me THE SETUP LIST
+
+**Everything you just learned dies with this conversation unless you hand it back to me.** The setup prompt in a few days is a **new conversation with no memory of this one**, and its very first step asks me for this list by name. If I do not have it, that session either rebuilds it from scratch or, worse, quietly builds an app that is missing an account.
+
+**So finish by printing one block I can copy and keep. Put it in a fenced code block so it copies cleanly.** Call it **the setup list**. Include, in plain text and nothing fancy:
+
+1. **The mailbox** the alerts land in, in full — and if they are forwarded, where from and confirmation that the forwarded copy still shows the bank as sender.
+2. **Every bank**, and under each one every **account**, **card** (last four) and **loan**, with:
+   - the alert types now switched on, or **`NO ALERT`** and why
+   - **`CARRIES A BALANCE`** where it does
+   - **whose card it is**, where we worked that out — so the setup prompt confirms it in one word instead of asking me again
+3. **The sending address of the real alerts**, per bank, exactly as it appears — this is what the app's reader is keyed on.
+4. **Where each statement lives and what form it takes** — data file, PDF attached to the email, or a notice with a login link. Per account, not per bank.
+5. **Anything unfinished** — an alert that would not save, an address still waiting on the bank to verify, an account I mentioned that we never found.
+
+**Tell me plainly to save that block somewhere I will find it in a few days**, and that the setup prompt opens by asking for it.
+
 ## What happens next
 
 Nothing, for a few days. The alerts pile up in that mailbox on their own.
 
-**Then I come back with the main setup prompt.** That one builds the app, loads my history, and writes the code that reads these emails — and it will have a real week of them to work from instead of one or two.
+**Then I come back with the main setup prompt — Prompt 2 in the same kit this came from.** That one builds the app, loads my history, and writes the code that reads these emails — and it will have a real week of them to work from instead of one or two. **It is one sitting, roughly an evening, so it wants a clear run rather than a spare ten minutes.**
 
 Tell me roughly when to come back. **A few days is usually enough, but what actually matters is variety** — the app's reader needs to have seen money going out *and* money coming in, since refunds and deposits are often written differently. If my spending is light, longer is better.

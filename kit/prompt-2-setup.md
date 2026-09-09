@@ -99,7 +99,11 @@ You cannot do this job with chat alone. **Before you touch anything, test each o
 
 **This assumes I already ran the alerts pre-script a few days ago and my bank's alert emails have been arriving since.** If I have not, stop — send me back to do that first and come back in a few days. Building the app before the samples exist is what this ordering is designed to avoid.
 
-**Ask me for the list first.** When I ran the pre-script I gave a rough list of my accounts, cards, loans and the other things worth watching for. **Ask me to paste it back, or reconstruct it with me if I have lost it.** Everything below gets checked against it, and without it there is no way to tell a household with nothing to import from one whose alerts were never set up.
+**Ask me for the setup list first — that is its name, and the pre-script told me to save it.** It is one block of text ending that session: the mailbox, every bank with its accounts, cards and loans, which alerts got switched on, which accounts carry a balance, whose card is whose, the address the alerts are sent from, and where each statement lives. **Ask me to paste it back.** Everything below gets checked against it, and without it there is no way to tell a household with nothing to import from one whose alerts were never set up.
+
+**If I have lost it, do not stall and do not interrogate me.** Most of it is recoverable from the mailbox you are about to read — the banks, the accounts, the sending addresses and the alert coverage are all in the alerts themselves. **Rebuild what you can, then ask me only for what the mail cannot tell you:** which accounts carry a balance, where the statements live, and anything the alerts never covered. Say which parts you rebuilt and which came from me.
+
+**Two things in that list save real time later, so read them now rather than rediscovering them:** the **sending address per bank** is what step 11 keys the parser on, and **whose card is whose** is what step 7 would otherwise work out again from scratch — confirm it with me in one line instead of re-deriving it.
 
 **Confirm the mailbox first.** Which address are the alerts arriving at, and is it the one on the Google account that will own the spreadsheet? **If nothing has arrived at all, check the destination selected in the bank's alert settings before assuming the alerts were never switched on** — an alert pointed at an old address looks identical to an alert that was never created. If they are arriving somewhere else and being forwarded in, check the forwarding is actually still working rather than assuming — a forwarding rule that has quietly stopped looks exactly like a bank that has quietly stopped sending.
 
@@ -107,6 +111,7 @@ Then look in that mailbox and tell me what you find:
 
 - how many alert emails have arrived, and over how many days
 - whether they cover money going **out** and money coming **in** — refunds and deposits are often written differently, and a reader built on withdrawals alone breaks on the first refund
+- **who each alert says it is FROM, exactly.** Step 11 finds my mail by searching that address, so it has to be the bank's, character for character. **If I chose to forward alerts in from another mailbox, this is where a broken forwarding rule shows up** — a forwarded copy that says it is from me rather than from the bank will parse fine today and find nothing once the app is live. Tell me now, not in step 11
 - **whether every account and card on my list is actually represented.** An account on the list with no alerts in the mailbox is the single most important thing you can find here — **go back and fix the alert before building anything on top of it**, because once the app exists that account will look permanently like it has no activity
 
 **If the sample is thin, say so and stop.** Roughly twenty messages covering both directions is a working minimum. It is better to wait another few days than to build a reader on two examples and rewrite it next week.
@@ -190,6 +195,8 @@ For anything still ambiguous, column C of `Category Rules` sets how a row matche
 Read what you can from my imported history and my statements — last four digits, and which card is which.
 
 **You now have months of my spending, so do not ask me to identify a card by its number. Work it out and propose it.**
+
+**And check the setup list first — the pre-script may already have settled this.** If it names whose card is whose, **confirm it in one line against what the history shows** and move on. Asking me the same question twice, days apart, reads as though the first answer was thrown away. Only where the list is silent, or the history disagrees with it, do you work it out from scratch below — and if they disagree, say so and let me settle it.
 
 > **Do not ask "whose card is this?" against a list of last-four digits. Nobody knows.** Work it out from the spending and **propose an answer** they can confirm or correct in one word.
 >
