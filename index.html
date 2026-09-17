@@ -43,6 +43,10 @@
        a row tinted with the link colour reads as interactive when it is not. */
     --paid-1: #4d8dff;
     --paid-2: #ff7ac0;
+    /* 'Joint' -- a decision the household made, not a person who swiped. Its own
+       token, and deliberately NOT --pos: that green means money coming IN, and
+       reusing it would make every shared row read as income at a glance. */
+    --paid-joint: #48c774;
 
     --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
     --r-ctl: 12px; --r-panel: 18px; --r-pill: 999px;
@@ -118,7 +122,13 @@
     width: 3px; border-radius: var(--r-pill); background: var(--hair);
   }
   #txnList.show-paidby .txn-row .txn-merchant { color: var(--text); }
-  .paidby-key { display: none; gap: var(--s4); align-items: center; font-size: 12px;
+  /* WRAPS, as of 2026-09-17. This was three items and is now four -- the 'Joint'
+     swatch joined it -- and measured at 390px, the width this app is actually used
+     at, four came to within 6px of the content box. Arithmetic that close is not a
+     pass, and a fork with longer names than 'Trevon' and 'Ainsley' would overflow
+     outright. Wrapping removes the dependency on name length entirely. */
+  .paidby-key { display: none; gap: var(--s4); row-gap: var(--s2); flex-wrap: wrap;
+                align-items: center; font-size: 12px;
                 color: var(--muted); margin: calc(-1 * var(--s3)) 0 var(--s3); }
   .paidby-key.on { display: flex; }
   .paidby-key i { display: inline-block; width: 10px; height: 3px; border-radius: var(--r-pill);
@@ -2298,8 +2308,16 @@
     // through to PAID_FALLBACK by position, exactly as before.
     var COLOUR_SLOT = { blue: 'var(--paid-1)', pink: 'var(--paid-2)' };
     var PAID_FALLBACK = ['var(--paid-1)', 'var(--paid-2)', 'var(--pos)', 'var(--neg)'];
+    // 'Joint' GETS A COLOUR, 'Unassigned' STAYS GREY, and the gap between them is
+    // the whole point (Trevon, 2026-09-17: "have things that are unknown stay grey
+    // but things that are confirmed joint go green"). Joint is a decision somebody
+    // made and is therefore FINISHED; Unassigned is work nobody has done yet, and
+    // it must keep looking unfinished or the two collapse into each other.
+    // Checked ahead of PERSON_COLOURS so a household cannot accidentally assign
+    // 'joint' to the blue or pink slot and lose the distinction.
     function paidColor(name) {
       if (!name || name === 'Unassigned') return '';
+      if (name === 'Joint') return 'var(--paid-joint)';
       var key = String(name).toLowerCase();
       var slot = COLOUR_SLOT[PERSON_COLOURS[key]];
       if (slot) return slot;
@@ -2317,7 +2335,15 @@
       var badge = t.account === 'credit' ? 'Credit Card' : 'Checking';
       // paidBy is WHO SWIPED, from the card. Distinct from t.person, which is whose
       // budget it belongs to -- a Joint row still knows who paid.
-      var tint = paidColor(t.paidBy);
+      //
+      // FALLS BACK TO t.person WHEN THE CARD CANNOT ANSWER (2026-09-17). paidBy is
+      // derived from the card last four alone, and MACU's alert carries no card
+      // number, so every checking row reached this line as 'Unassigned' and drew
+      // nothing -- 44 of the 222 rows since 08/01. Column H is the better answer
+      // when the card is silent, whether a human wrote it or personFromDescriptor_
+      // read the name out of the bank's own text. The card still WINS whenever it
+      // exists, so this only ever fills a gap; it never overrides a fact.
+      var tint = paidColor(t.paidBy) || paidColor(t.person);
       // What the match is FOR. The row already showed a green number; it never said
       // that the number is a RETURN, which purchase it came off, or -- the case worth
       // seeing -- that the purchase sat in a different month from the credit. The
@@ -3524,9 +3550,17 @@
       $('#txnList').classList.toggle('show-paidby', on);
       $('#paidbyKey').classList.toggle('on', on);
       if (on) {
+        // Joint is deliberately NOT in peopleInData() -- it is an attribution, not
+        // a person -- but it now draws its own green, so the key has to name it or
+        // that stripe is an unexplained colour. Listed only when the data holds one.
+        var hasJoint = allTransactions.some(function(t) { return t.person === 'Joint'; });
+        // The grey no longer means "no card on the row": a cardless row whose
+        // descriptor names somebody is now coloured. Grey means nobody has decided.
         $('#paidbyKey').innerHTML = peopleInData().map(function(p) {
           return '<span><i style="background:' + paidColor(p) + '"></i>' + p + '</span>';
-        }).join('') + '<span><i style="background:var(--hair)"></i>no card on the row</span>';
+        }).join('') +
+        (hasJoint ? '<span><i style="background:var(--paid-joint)"></i>Joint</span>' : '') +
+        '<span><i style="background:var(--hair)"></i>nobody assigned yet</span>';
       }
     });
     $('#tf-month').addEventListener('change', function() {
